@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TELEFUNKEN</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: Arial, sans-serif;
+      background: #e3f2fd;
+      box-sizing: border-box;
+    }
+    h1 {
+      font-size: 48px;
+      color: black;
+      text-align: center;
+      margin: 20px 0;
+    }
+    label, input, select, button {
+      font-size: 16px;
+      margin: 5px;
+    }
+    #inputJugadores, #jugadores, #ranking {
+      max-width: 1200px;
+      margin: auto;
+    }
+    .jugador {
+      background: #ffffff;
+      padding: 10px;
+      margin: 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      flex: 1 1 300px;
+    }
+    .jugadores-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .ranking {
+      font-size: 20px;
+      font-weight: bold;
+      color: #333;
+      text-align: center;
+      padding: 10px;
+      background: #bbdefb;
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td, th {
+      border: 1px solid #ddd;
+      padding: 4px;
+      text-align: center;
+    }
+    .total {
+      font-weight: bold;
+      background-color: #2196F3;
+      color: white;
+    }
+    .monedas {
+      background-color: #ffe0b2;
+      font-weight: bold;
+    }
+    input[type=number] {
+      width: 60px;
+    }
+    button {
+      background-color: #64b5f6;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #42a5f5;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>TELEFUNKEN</h1>
+
+  <div style="text-align:center">
+    <label for="numJugadores">Cantidad de jugadores:</label>
+    <select id="numJugadores" onchange="crearInputsJugadores()">
+      <option value="">Seleccionar</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8">8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+    </select>
+  </div>
+
+  <div id="inputJugadores" style="text-align:center;"></div>
+
+  <div style="text-align:center">
+    <button onclick="crearTablasJugadores()">Iniciar Juego</button>
+  </div>
+
+  <div id="jugadores" class="jugadores-grid"></div>
+
+  <div class="ranking" id="ranking"></div>
+
+  <script>
+    function crearInputsJugadores() {
+      const num = parseInt(document.getElementById('numJugadores').value);
+      const contenedor = document.getElementById('inputJugadores');
+      contenedor.innerHTML = '';
+      for (let i = 0; i < num; i++) {
+        contenedor.innerHTML += `<div><label>Jugador ${i + 1}: </label><input type="text" id="jugador${i}" oninput="this.value = this.value.toUpperCase();" /></div>`;
+      }
+    }
+
+    function crearTablasJugadores() {
+      const num = parseInt(document.getElementById('numJugadores').value);
+      const jugadoresDiv = document.getElementById('jugadores');
+      jugadoresDiv.innerHTML = '';
+
+      for (let i = 0; i < num; i++) {
+        const nombre = (document.getElementById(`jugador${i}`).value || `JUGADOR ${i + 1}`).toUpperCase();
+        jugadoresDiv.innerHTML += generarTablaJugador(nombre, i);
+      }
+      actualizarRanking();
+    }
+
+    function generarTablaJugador(nombre, index) {
+      const items = ["TRICA", "DOS TRICAS", "TRES TRICAS", "CUARTO", "2 CUARTOS", "QUINA", "ESCALERA"];
+      let tabla = `<div class="jugador" id="jugadorDiv${index}">
+        <h3 style="text-align:center">${nombre}</h3>
+        <table>
+          <tr><th>Nombres</th><th>monedas</th></tr>
+          <tr><td class="monedas">monedas</td><td id="monedas${index}">7</td></tr>
+          <tr><td>Acciones</td><td>
+            <button onclick="comprar(${index})">Comprar</button>
+            <button onclick="devolver(${index})">Devolver moneda</button>
+          </td></tr>`;
+      items.forEach((item, i) => {
+        tabla += `<tr><td>${item}</td><td><input type="number" min="0" value="0" id="input${index}_${i}" onchange="calcularTotal(${index})"></td></tr>`;
+      });
+      tabla += `<tr><td class="total">total</td><td id="total${index}" class="total">0</td></tr>`;
+      tabla += `</table></div>`;
+      return tabla;
+    }
+
+    function comprar(index) {
+      let monedas = parseInt(document.getElementById(`monedas${index}`).innerText);
+      if (monedas > 0) {
+        monedas--;
+        document.getElementById(`monedas${index}`).innerText = monedas;
+        actualizarRanking();
+      }
+    }
+
+    function devolver(index) {
+      let monedas = parseInt(document.getElementById(`monedas${index}`).innerText);
+      monedas++;
+      document.getElementById(`monedas${index}`).innerText = monedas;
+      actualizarRanking();
+    }
+
+    function calcularTotal(index) {
+      let total = 0;
+      for (let i = 0; i < 7; i++) {
+        total += parseInt(document.getElementById(`input${index}_${i}`).value);
+      }
+      document.getElementById(`total${index}`).innerText = total;
+      actualizarRanking();
+    }
+
+    function actualizarRanking() {
+      const num = parseInt(document.getElementById('numJugadores').value);
+      let puntajes = [];
+      for (let i = 0; i < num; i++) {
+        const nombre = (document.getElementById(`jugador${i}`).value || `JUGADOR ${i + 1}`).toUpperCase();
+        const total = parseInt(document.getElementById(`total${i}`).innerText);
+        puntajes.push({ nombre, total });
+      }
+      puntajes.sort((a, b) => a.total - b.total);
+      let rankingHTML = `<p>🏅 1º lugar: ${puntajes[0]?.nombre} (${puntajes[0]?.total})</p>`;
+      if (puntajes[1]) rankingHTML += `<p>🥈 2º lugar: ${puntajes[1].nombre} (${puntajes[1].total})</p>`;
+      if (puntajes[2]) rankingHTML += `<p>🥉 3º lugar: ${puntajes[2].nombre} (${puntajes[2].total})</p>`;
+      document.getElementById('ranking').innerHTML = rankingHTML;
+    }
+  </script>
+</body>
+</html>
