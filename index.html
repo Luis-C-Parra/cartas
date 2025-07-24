@@ -14,9 +14,36 @@
       background: #e3f2fd;
       box-sizing: border-box;
     }
-    h1 {
-      font-size: 48px;
+    /* Splash screen */
+    #splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #C0D9D9;
       color: black;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #splash h1 {
+      font-size: 60px;
+      margin: 0;
+    }
+    #splash p {
+      font-size: 24px;
+    }
+
+    #mainContent {
+      display: none;
+    }
+
+    h1 {
+      font-size: 80px;
+      color: blue;
       text-align: center;
       margin: 20px 0;
     }
@@ -73,6 +100,10 @@
     input[type=number] {
       width: 60px;
     }
+    input[type=number]:not(:placeholder-shown),
+    input[type=text]:not(:placeholder-shown) {
+      background-color: #c8e6c9;
+    }
     button {
       background-color: #64b5f6;
       color: white;
@@ -88,42 +119,66 @@
 </head>
 <body>
 
-  <h1>TELEFUNKEN</h1>
-
-  <div style="text-align:center">
-    <label for="numJugadores">Cantidad de jugadores:</label>
-    <select id="numJugadores" onchange="crearInputsJugadores()">
-      <option value="">Seleccionar</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-      <option value="7">7</option>
-      <option value="8">8</option>
-      <option value="9">9</option>
-      <option value="10">10</option>
-    </select>
+  <!-- Splash screen -->
+  <div id="splash">
+    <h1>TELEFUNKEN</h1>
+	<h1>FAMILIAR</h1>
+    <p>Programado por Luis C. Parra</p>
   </div>
 
-  <div id="inputJugadores" style="text-align:center;"></div>
+  <!-- Main game content -->
+  <div id="mainContent">
+    <h1>TELEFUNKEN</h1>
 
-  <div style="text-align:center">
-    <button onclick="crearTablasJugadores()">Iniciar Juego</button>
+    <div style="text-align:center">
+      <label for="numJugadores">Cantidad de jugadores:</label>
+      <select id="numJugadores" onchange="crearInputsJugadores()">
+        <option value="">Seleccionar</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+      </select>
+    </div>
+
+    <div id="inputJugadores" style="text-align:center;"></div>
+
+    <div style="text-align:center">
+      <button onclick="crearTablasJugadores()">Iniciar Juego</button>
+    </div>
+
+    <div id="jugadores" class="jugadores-grid"></div>
+
+    <div class="ranking" id="ranking"></div>
+
+    <footer>
+      <div style="text-align:center">
+        Programado por Luis C. Parra &nbsp; | &nbsp; © 2025 &nbsp; | &nbsp; Contacto: luiscocabia@hotmail.com
+      </div>
+    </footer>
   </div>
-
-  <div id="jugadores" class="jugadores-grid"></div>
-
-  <div class="ranking" id="ranking"></div>
 
   <script>
+    // Mostrar splash y ocultarlo a los 3 segundos
+    window.onload = function() {
+      setTimeout(() => {
+        document.getElementById("splash").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+      }, 2000);
+    };
+
     function crearInputsJugadores() {
       const num = parseInt(document.getElementById('numJugadores').value);
       const contenedor = document.getElementById('inputJugadores');
       contenedor.innerHTML = '';
       for (let i = 0; i < num; i++) {
-        contenedor.innerHTML += `<div><label>Jugador ${i + 1}: </label><input type="text" id="jugador${i}" oninput="this.value = this.value.toUpperCase();" /></div>`;
+        contenedor.innerHTML += `<div><label>Jugador ${i + 1}: </label><input type="text" id="jugador${i}" placeholder=" " oninput="this.value = this.value.toUpperCase();" /></div>`;
       }
     }
 
@@ -151,7 +206,7 @@
             <button onclick="devolver(${index})">Devolver moneda</button>
           </td></tr>`;
       items.forEach((item, i) => {
-        tabla += `<tr><td>${item}</td><td><input type="number" min="0" value="0" id="input${index}_${i}" onchange="calcularTotal(${index})"></td></tr>`;
+        tabla += `<tr><td>${item}</td><td><input type="number" min="0" id="input${index}_${i}" placeholder=" " onchange="calcularTotal(${index})"></td></tr>`;
       });
       tabla += `<tr><td class="total">total</td><td id="total${index}" class="total">0</td></tr>`;
       tabla += `</table></div>`;
@@ -177,7 +232,8 @@
     function calcularTotal(index) {
       let total = 0;
       for (let i = 0; i < 7; i++) {
-        total += parseInt(document.getElementById(`input${index}_${i}`).value);
+        let valor = document.getElementById(`input${index}_${i}`).value;
+        total += parseInt(valor || 0);
       }
       document.getElementById(`total${index}`).innerText = total;
       actualizarRanking();
@@ -198,5 +254,6 @@
       document.getElementById('ranking').innerHTML = rankingHTML;
     }
   </script>
+
 </body>
 </html>
