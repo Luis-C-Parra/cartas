@@ -1,20 +1,27 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TELEFUNKEN</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TELEFUNKEN FAMILIAR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
-    html, body {
+    /* Reset y base */
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      height: 100%;
-      width: 100%;
-      font-family: Arial, sans-serif;
-      background: #e3f2fd;
-      box-sizing: border-box;
     }
-    /* Splash screen */
+
+    body {
+      font-family: 'Montserrat', Arial, sans-serif;
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      color: #2c3e50;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* Splash Screen */
     #splash {
       position: fixed;
       top: 0;
@@ -22,115 +29,298 @@
       width: 100%;
       height: 100%;
       background: #C0D9D9;
-      color: black;
+      color: #1a1a1a;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 9999;
-    }
-    #splash h1 {
-      font-size: 60px;
-      margin: 0;
-    }
-    #splash p {
-      font-size: 24px;
+      text-align: center;
+      animation: fadeIn 0.8s ease-in-out;
     }
 
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    #splash h1 {
+      font-size: 5rem;
+      margin: 0;
+      color: #2196F3;
+      font-weight: 700;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #splash h2 {
+      font-size: 2.5rem;
+      margin: 10px 0 0;
+      color: #333;
+    }
+
+    #splash p {
+      font-size: 1.2rem;
+      margin-top: 15px;
+      color: #444;
+    }
+
+    /* Main Content */
     #mainContent {
       display: none;
+      opacity: 0;
+      animation: slideIn 0.6s ease-out forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     h1 {
-      font-size: 80px;
-      color: blue;
+      font-size: 3.5rem;
+      color: #1565C0;
       text-align: center;
-      margin: 20px 0;
+      margin: 20px 0 30px;
+      font-weight: 700;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
     }
-    label, input, select, button {
-      font-size: 16px;
-      margin: 5px;
-    }
-    #inputJugadores, #jugadores, #ranking {
-      max-width: 1200px;
-      margin: auto;
-    }
-    .jugador {
+
+    /* Inputs */
+    .controls {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
       background: #ffffff;
-      padding: 10px;
-      margin: 10px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      flex: 1 1 300px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
+
+    label {
+      font-size: 1.1rem;
+      color: #333;
+      margin-right: 10px;
+    }
+
+    select, input[type="text"] {
+      font-size: 1.1rem;
+      padding: 8px 12px;
+      border: 2px solid #64b5f6;
+      border-radius: 8px;
+      outline: none;
+      width: 180px;
+      transition: border-color 0.3s;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: #1976D2;
+    }
+
+    button {
+      font-size: 1rem;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px 5px;
+      transition: background-color 0.3s, transform 0.2s;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background-color: #1976D2;
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    /* Inputs Jugadores */
+    #inputJugadores {
+      margin: 20px auto;
+      max-width: 600px;
+    }
+
+    #inputJugadores div {
+      margin: 10px 0;
+    }
+
+    input[type="text"] {
+      width: 250px;
+      text-align: center;
+    }
+
+    input[type="text"]:not(:placeholder-shown) {
+      background-color: #e8f5e9;
+      border-color: #4caf50;
+    }
+
+    /* Grid de Jugadores */
     .jugadores-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 20px;
       justify-content: center;
+      margin-top: 30px;
     }
-    .ranking {
-      font-size: 20px;
-      font-weight: bold;
-      color: #333;
+
+    .jugador {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      flex: 1 1 300px;
+      max-width: 350px;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .jugador:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .jugador h3 {
+      font-size: 1.6rem;
+      color: #1565C0;
+      margin-bottom: 15px;
       text-align: center;
-      padding: 10px;
-      background: #bbdefb;
-      margin-top: 20px;
-      border-radius: 10px;
+      font-weight: 600;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 1rem;
     }
-    td, th {
+
+    th {
+      background-color: #2196F3;
+      color: white;
+      padding: 10px;
+      font-weight: 600;
+    }
+
+    td {
       border: 1px solid #ddd;
-      padding: 4px;
+      padding: 8px;
       text-align: center;
     }
+
+    tr:nth-child(even) {
+      background-color: #f5f9ff;
+    }
+
+    .monedas {
+      background-color: #ffe0b2;
+      font-weight: bold;
+      color: #d84315;
+    }
+
     .total {
       font-weight: bold;
       background-color: #2196F3;
       color: white;
     }
-    .monedas {
-      background-color: #ffe0b2;
+
+    input[type="number"] {
+      width: 60px;
+      padding: 6px;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+
+    input[type="number"]:focus {
+      border-color: #2196F3;
+      outline: none;
+    }
+
+    /* Campo con valor (relleno) */
+    input[type="number"].filled {
+      background-color: #c8e6c9 !important; /* Verde claro */
+      color: #1b5e20;
       font-weight: bold;
     }
-    input[type=number] {
-      width: 60px;
+
+    /* Ranking */
+    #ranking {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 15px;
+      background: #e3f2fd;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      font-size: 1.3rem;
+      color: #1565C0;
+      text-align: center;
+      font-weight: 600;
     }
-    input[type=number]:not(:placeholder-shown),
-    input[type=text]:not(:placeholder-shown) {
-      background-color: #c8e6c9;
+
+    #ranking p {
+      margin: 8px 0;
     }
-    button {
-      background-color: #64b5f6;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 5px;
-      cursor: pointer;
+
+    /* Footer */
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #555;
+      font-style: italic;
+      padding: 20px;
+      border-top: 1px solid #ddd;
+      background: #ffffff;
+      border-radius: 10px;
+      max-width: 800px;
+      margin: 50px auto 20px;
     }
-    button:hover {
-      background-color: #42a5f5;
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.5rem;
+      }
+      #splash h1 {
+        font-size: 3rem;
+      }
+      #splash h2 {
+        font-size: 1.8rem;
+      }
+      .jugador {
+        flex: 1 1 100%;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Splash screen -->
+  <!-- Splash Screen -->
   <div id="splash">
     <h1>TELEFUNKEN</h1>
-	<h1>FAMILIAR</h1>
+    <h2>FAMILIAR</h2>
     <p>Programado por Luis C. Parra</p>
   </div>
 
-  <!-- Main game content -->
+  <!-- Contenido Principal -->
   <div id="mainContent">
-    <h1>TELEFUNKEN</h1>
+    <h1>TELEFUNKEN FAMILIAR</h1>
 
-    <div style="text-align:center">
+    <div class="controls">
       <label for="numJugadores">Cantidad de jugadores:</label>
       <select id="numJugadores" onchange="crearInputsJugadores()">
         <option value="">Seleccionar</option>
@@ -147,29 +337,31 @@
       </select>
     </div>
 
-    <div id="inputJugadores" style="text-align:center;"></div>
+    <div id="inputJugadores"></div>
 
-    <div style="text-align:center">
+    <div style="text-align:center; margin: 20px 0;">
       <button onclick="crearTablasJugadores()">Iniciar Juego</button>
     </div>
 
     <div id="jugadores" class="jugadores-grid"></div>
 
-    <div class="ranking" id="ranking"></div>
+    <div id="ranking"></div>
 
     <footer>
-  <div style="text-align:center; font-style: italic;">
-    Programado por Luis C. Parra &nbsp; | &nbsp; © 2025 &nbsp; | &nbsp; Contacto: luiscocabia@hotmail.com
-  </div>
-</footer>
+      Programado por Luis C. Parra &nbsp; | &nbsp; © 2025 &nbsp; | &nbsp; Contacto: luiscocabia@hotmail.com
+    </footer>
   </div>
 
   <script>
-    // Mostrar splash y ocultarlo a los 3 segundos
+    // Mostrar splash y ocultarlo con animación
     window.onload = function() {
       setTimeout(() => {
-        document.getElementById("splash").style.display = "none";
-        document.getElementById("mainContent").style.display = "block";
+        const splash = document.getElementById("splash");
+        splash.style.animation = "fadeOut 0.8s forwards";
+        setTimeout(() => {
+          splash.style.display = "none";
+          document.getElementById("mainContent").style.display = "block";
+        }, 800);
       }, 2000);
     };
 
@@ -178,7 +370,12 @@
       const contenedor = document.getElementById('inputJugadores');
       contenedor.innerHTML = '';
       for (let i = 0; i < num; i++) {
-        contenedor.innerHTML += `<div><label>Jugador ${i + 1}: </label><input type="text" id="jugador${i}" placeholder=" " oninput="this.value = this.value.toUpperCase();" /></div>`;
+        contenedor.innerHTML += `
+          <div>
+            <label>Jugador ${i + 1}: </label>
+            <input type="text" id="jugador${i}" placeholder="Nombre" oninput="this.value = this.value.toUpperCase();" />
+          </div>
+        `;
       }
     }
 
@@ -196,21 +393,45 @@
 
     function generarTablaJugador(nombre, index) {
       const items = ["TRICA", "DOS TRICAS", "TRES TRICAS", "CUARTO", "2 CUARTOS", "QUINA", "ESCALERA"];
-      let tabla = `<div class="jugador" id="jugadorDiv${index}">
-        <h3 style="text-align:center">${nombre}</h3>
-        <table>
-          <tr><th>Nombres</th><th>monedas</th></tr>
-          <tr><td class="monedas">monedas</td><td id="monedas${index}">7</td></tr>
-          <tr><td>Acciones</td><td>
-            <button onclick="comprar(${index})">Comprar</button>
-            <button onclick="devolver(${index})">Devolver moneda</button>
-          </td></tr>`;
+      let tabla = `
+        <div class="jugador" id="jugadorDiv${index}">
+          <h3>${nombre}</h3>
+          <table>
+            <tr><th>Nombres</th><th>monedas</th></tr>
+            <tr>
+              <td class="monedas">monedas</td>
+              <td id="monedas${index}">7</td>
+            </tr>
+            <tr>
+              <td>Acciones</td>
+              <td>
+                <button onclick="comprar(${index})">Comprar</button>
+                <button onclick="devolver(${index})">Devolver</button>
+              </td>
+            </tr>
+      `;
       items.forEach((item, i) => {
-        tabla += `<tr><td>${item}</td><td><input type="number" min="0" id="input${index}_${i}" placeholder=" " onchange="calcularTotal(${index})"></td></tr>`;
+        tabla += `
+          <tr>
+            <td>${item}</td>
+            <td>
+              <input type="number" min="0" id="input${index}_${i}" placeholder=" " 
+                     oninput="actualizarEstadoCampo(this); calcularTotal(${index})">
+            </td>
+          </tr>`;
       });
       tabla += `<tr><td class="total">total</td><td id="total${index}" class="total">0</td></tr>`;
       tabla += `</table></div>`;
       return tabla;
+    }
+
+    // Función para marcar el campo como relleno
+    function actualizarEstadoCampo(input) {
+      if (input.value.trim() !== '') {
+        input.classList.add('filled');
+      } else {
+        input.classList.remove('filled');
+      }
     }
 
     function comprar(index) {
@@ -232,8 +453,10 @@
     function calcularTotal(index) {
       let total = 0;
       for (let i = 0; i < 7; i++) {
-        let valor = document.getElementById(`input${index}_${i}`).value;
-        total += parseInt(valor || 0);
+        const input = document.getElementById(`input${index}_${i}`);
+        total += parseInt(input.value || 0);
+        // Actualizar clase de visualización
+        actualizarEstadoCampo(input);
       }
       document.getElementById(`total${index}`).innerText = total;
       actualizarRanking();
