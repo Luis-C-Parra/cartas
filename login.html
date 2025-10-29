@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - TELEFUNKEN FAMILIAR</title>
+    <link href="style.css" rel="stylesheet" /> 
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-box" id="login-box">
+            <h2>👋 Iniciar Sesión</h2>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="login-user">👤 Usuario:</label>
+                    <input type="text" id="login-user" required>
+                </div>
+                <div class="input-group">
+                    <label for="login-pass">🔒 Contraseña:</label>
+                    <input type="password" id="login-pass" required>
+                </div>
+                <button type="submit" class="auth-button">Entrar al Juego</button>
+            </form>
+            <p class="switch-link">¿No tienes cuenta? <a href="#" onclick="showRegister()">Regístrate aquí</a></p>
+        </div>
+
+        <div class="auth-box" id="register-box" style="display: none;">
+            <h2>📝 Crear Cuenta</h2>
+            <form id="register-form">
+                <div class="input-group">
+                    <label for="reg-user">👤 Usuario:</label>
+                    <input type="text" id="reg-user" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-pass">🔒 Contraseña:</label>
+                    <input type="password" id="reg-pass" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-pass-conf">Confirmar Contraseña:</label>
+                    <input type="password" id="reg-pass-conf" required>
+                </div>
+                <button type="submit" class="auth-button register-button">Registrarse</button>
+            </form>
+            <p class="switch-link">¿Ya tienes cuenta? <a href="#" onclick="showLogin()">Inicia Sesión</a></p>
+        </div>
+
+        <div id="auth-message" class="message-box" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_URL = '/api'; // Apunta a las Netlify Functions
+
+        function showRegister() {
+            document.getElementById('login-box').style.display = 'none';
+            document.getElementById('register-box').style.display = 'block';
+            document.getElementById('auth-message').style.display = 'none';
+        }
+
+        function showLogin() {
+            document.getElementById('login-box').style.display = 'block';
+            document.getElementById('register-box').style.display = 'none';
+            document.getElementById('auth-message').style.display = 'none';
+        }
+
+        function displayMessage(msg, type) {
+            const msgBox = document.getElementById('auth-message');
+            msgBox.innerText = msg;
+            msgBox.className = `message-box ${type}`;
+            msgBox.style.display = 'block';
+        }
+
+        // --- LÓGICA DE REGISTRO ---
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('reg-user').value.trim();
+            const password = document.getElementById('reg-pass').value;
+            const conf = document.getElementById('reg-pass-conf').value;
+
+            if (password !== conf) {
+                displayMessage("🚨 Las contraseñas no coinciden.", 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayMessage(`✅ ${data.message} Ahora inicia sesión.`, 'success');
+                    document.getElementById('register-form').reset();
+                    setTimeout(showLogin, 2500); 
+                } else {
+                    displayMessage(`❌ Error al registrar: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                displayMessage("❌ Error de conexión. Verifique la URL de la API.", 'error');
+            }
+        });
+
+        // --- LÓGICA DE LOGIN ---
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-user').value.trim();
+            const password = document.getElementById('login-pass').value;
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Guardar el token de sesión
+                    localStorage.setItem('userToken', data.token); 
+                    localStorage.setItem('telefunkenUsername', data.username);
+                    displayMessage(`🥳 ¡Bienvenido, ${data.username.toUpperCase()}! Redirigiendo...`, 'success');
+                    
+                    // Redirección CLAVE a la página del juego
+                    setTimeout(() => { 
+                        window.location.href = 'index.html'; 
+                    }, 1500); 
+
+                } else {
+                    displayMessage(`❌ Error de Login: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                displayMessage("❌ Error de conexión. Verifique la URL de la API.", 'error');
+            }
+        });
+    </script>
+</body>
+</html>
