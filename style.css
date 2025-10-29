@@ -478,3 +478,124 @@ footer {
         max-width: 100%;
     }
 }
+
+/* --- Estilo para el Botón de WhatsApp --- */
+.whatsapp-btn {
+    display: inline-block;
+    background-color: #25D366; /* Color oficial de WhatsApp */
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.3s, transform 0.2s;
+    border: none;
+}
+
+.whatsapp-btn:hover {
+    background-color: #1EBE4C;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+.whatsapp-btn:active {
+    transform: translateY(0);
+}
+
+
+.footer-whatsapp-btn {
+    /* Ajustes específicos para el footer */
+    font-size: 0.9rem; /* Un poco más pequeño para el footer */
+    margin-top: 5px;
+    padding: 8px 15px;
+}
+
+
+/* style.css (Asegúrate de que este bloque exista y esté correcto) */
+
+/* --- FOOTER & WHATSAPP LINK --- */
+footer {
+    /* Eliminamos la posición 'fixed' o 'absolute' si la pusiste */
+    margin-top: 50px;
+    text-align: center;
+    font-size: 0.95rem;
+    color: #555;
+    font-style: italic;
+    padding: 20px;
+    border-top: 1px solid #ddd;
+    background: #ffffff;
+    border-radius: 10px;
+    /* QUITAMOS EL MAX-WIDTH y el margin: auto; que pueden estar ocultándolo
+       o si lo mantenemos, aseguramos que el margin-top sea suficiente. */
+    max-width: 800px; /* Se puede mantener el ancho máximo */
+    margin: 50px auto 20px auto; /* Centrado y con margen superior/inferior */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+}
+
+.whatsapp-btn {
+    /* Estilo del botón (que ya definimos) */
+    display: inline-block;
+    background-color: #25D366; 
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 700;
+    /* ... (resto de estilos del botón) ... */
+}
+
+
+/* style.css */
+.splash-logo {
+    width: 550px; /* Ajusta este valor al tamaño que desees */
+    height: auto; /* Mantiene la proporción */
+    margin-bottom: 20px;
+}
+
+/* style.css */
+.usuario-info {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    color: #4CAF50; /* Color verde amigable */
+}
+
+/* style.css */
+
+/* style.css */
+
+/* style.css */
+
+.usuario-info {
+    /* Estilos de visibilidad y fuente */
+    position: relative; 
+    z-index: 10; 
+    font-size: 1.5rem; 
+    font-weight: 700;
+    
+    /* 🚨 CAMBIOS CLAVE: Quitamos margin: auto y reducimos padding */
+    text-align: left; /* Alineación a la izquierda dentro de su espacio */
+    margin: 0 15px 0 0; /* Margen a la derecha para separarse del botón */
+    padding: 8px 15px;
+    
+    /* Colores */
+    color: #0d47a1 !important; 
+    background: #e3f2fd; 
+    border: 1px solid #bbdefb; 
+    border-radius: 8px;
+    
+    /* Permite que crezca, no lo fuerza a un ancho fijo */
+    max-width: none; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+
+.user-header-line {
+    display: flex; /* Habilita el modo flexbox */
+    justify-content: center; /* Centra el grupo de elementos (nombre + botón) */
+    align-items: center; /* Alinea verticalmente los elementos */
+    margin-bottom: 25px; /* Espacio debajo de la línea */
+    flex-wrap: wrap; /* Permite que los elementos se muevan a la siguiente línea en móvil */
+}

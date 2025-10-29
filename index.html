@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TELEFUNKEN FAMILIAR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="style.css" rel="stylesheet" />
+    <link rel="icon" href="logo.png" type="image/png">
+</head>
+<body>
+
+    <div id="splash">
+        <img src="logo.png" alt="Logo Telefunken Familiar" class="splash-logo"> 
+        <h1>TELEFUNKEN</h1>
+        <h2>FAMILIAR</h2>
+        <p>Programado por Luis C. Parra</p>
+    </div>
+
+    <div id="mainContent">
+    <h1>🎲 TELEFUNKEN FAMILIAR</h1>
+    
+    <div class="user-header-line">
+            <div id="usuarioDisplay" class="usuario-info"></div> 
+            <button onclick="logout()" class="btn-logout">Cerrar Sesión</button>
+        </div>
+        
+
+        <div class="controls">
+            <label for="numJugadores">Cantidad de jugadores:</label>
+            <select id="numJugadores" onchange="crearInputsJugadores()">
+                <option value="">Seleccionar</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+        </div>
+
+        <div id="inputJugadores"></div>
+
+        <div style="text-align:center; margin: 20px 0;">
+            <button onclick="crearTablasJugadores()" class="btn-primary">Iniciar Juego</button>
+        </div>
+
+        <div id="jugadores" class="jugadores-grid"></div>
+
+        <div id="ranking"></div>
+
+        <div style="text-align:center; margin: 20px 0 40px;">
+            <button id="btnReiniciar" onclick="reiniciarJuego()" class="btn-danger">Comenzar de Nuevo</button>
+        </div>
+
+        <footer>
+            <p>Programado por **Luis C. Parra** | &copy; 2025</p>
+            <p style="margin-top: 10px; font-weight: 600; color: #555;">¿Necesitas ayuda con el juego?</p>
+            
+            <a 
+                href="https://wa.me/5491162841533?text=Hola,%20necesito%20ayuda%20con%20el%20marcador%20TELEFUNKEN%20FAMILIAR." 
+                target="_blank" 
+                class="whatsapp-btn footer-whatsapp-btn"
+            >
+                📞 Contacto WhatsApp
+            </a>
+        </footer>
+
+    </div> <script src="script.js"></script>
+
+</body>
