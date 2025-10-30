@@ -23,7 +23,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: #C0D9D9; /* Color base */
+    background: #C0D9D9;
     color: #1a1a1a;
     display: flex;
     flex-direction: column;
@@ -38,7 +38,8 @@ body {
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 
 .splash-logo {
-    width: 150px;
+    /* Tamaño por defecto para escritorio */
+    width: 200px; 
     height: auto;
     margin-bottom: 20px;
     filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.2));
@@ -46,7 +47,7 @@ body {
 
 #splash h1 {
     font-size: 5rem;
-    color: #0d47a1; /* Azul oscuro */
+    color: #0d47a1;
     font-weight: 900;
     text-shadow: 4px 4px 10px rgba(0,0,0,0.15);
 }
@@ -84,6 +85,34 @@ h1 {
     text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
 }
 
+/* --- VISUALIZACIÓN DE USUARIO Y BOTÓN (FLEXBOX) --- */
+.user-header-line {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap; 
+}
+
+.usuario-info {
+    position: relative; 
+    z-index: 10; 
+    font-size: 1.5rem; 
+    font-weight: 700;
+    
+    text-align: left; 
+    margin: 0 15px 0 0;
+    padding: 8px 15px;
+    
+    color: #0d47a1 !important; 
+    background: #e3f2fd; 
+    border: 1px solid #bbdefb; 
+    border-radius: 8px;
+    
+    max-width: none; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .header-actions {
     text-align: right;
     margin-bottom: 20px;
@@ -118,8 +147,8 @@ select, input[type="text"], input[type="password"] {
     border: 2px solid #64b5f6;
     border-radius: 8px;
     outline: none;
-    width: 100%; /* Adaptación para login/registro */
-    max-width: 300px; /* Max width para inputs en controles */
+    width: 100%; 
+    max-width: 300px; 
     transition: border-color 0.3s, box-shadow 0.3s;
     margin-top: 5px;
     display: inline-block;
@@ -143,7 +172,7 @@ button {
 }
 
 /* Botones con colores específicos */
-.btn-primary { /* Iniciar Juego */
+.btn-primary { 
     background-color: #2196F3;
     color: white;
 }
@@ -153,7 +182,7 @@ button {
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.btn-danger { /* Reiniciar */
+.btn-danger { 
     background-color: #d32f2f;
     color: white;
 }
@@ -163,7 +192,7 @@ button {
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.btn-secondary { /* Comprar / Devolver */
+.btn-secondary { 
     background-color: #4CAF50;
     color: white;
     padding: 8px 15px;
@@ -173,7 +202,7 @@ button {
     background-color: #388E3C;
 }
 
-.btn-logout { /* Cerrar Sesión */
+.btn-logout { 
     background-color: #757575;
     color: white;
     font-size: 0.9rem;
@@ -212,7 +241,7 @@ input[type="text"]:not(:placeholder-shown) {
 .jugadores-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 25px; /* Espacio mayor entre jugadores */
+    gap: 25px;
     justify-content: center;
     margin-top: 30px;
 }
@@ -221,11 +250,11 @@ input[type="text"]:not(:placeholder-shown) {
     background: #ffffff;
     padding: 20px;
     border-radius: 15px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1); /* Sombra más pronunciada */
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     flex: 1 1 300px;
     max-width: 400px;
     transition: transform 0.3s, box-shadow 0.3s;
-    border-left: 5px solid #2196F3; /* Borde de color */
+    border-left: 5px solid #2196F3;
 }
 
 .jugador:hover {
@@ -251,7 +280,7 @@ table {
 }
 
 th {
-    background-color: #1976D2; /* Azul más oscuro */
+    background-color: #1976D2;
     color: white;
     padding: 10px;
     font-weight: 600;
@@ -270,14 +299,14 @@ tr:nth-child(even) {
 }
 
 .monedas {
-    background-color: #ffcc80; /* Naranja claro */
+    background-color: #ffcc80;
     font-weight: bold;
-    color: #e65100; /* Naranja oscuro */
+    color: #e65100;
 }
 
 .total {
     font-weight: bold;
-    background-color: #0d47a1; /* Azul muy oscuro */
+    background-color: #0d47a1;
     color: white;
     font-size: 1.2rem;
 }
@@ -341,21 +370,34 @@ footer {
     background: #ffffff;
     border-radius: 10px;
     max-width: 800px;
-    margin: 50px auto 20px;
+    margin: 50px auto 20px auto;
     box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
 }
 
-.whatsapp-link {
-    color: #25D366; /* Color de WhatsApp */
+.whatsapp-btn {
+    display: inline-block;
+    background-color: #25D366;
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 8px;
     text-decoration: none;
     font-weight: 700;
-    margin-left: 5px;
-    transition: color 0.3s;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.3s, transform 0.2s;
+    border: none;
 }
 
-.whatsapp-link:hover {
-    color: #1EBE4C;
-    text-decoration: underline;
+.whatsapp-btn:hover {
+    background-color: #1EBE4C;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+.footer-whatsapp-btn {
+    font-size: 0.9rem;
+    margin-top: 5px;
+    padding: 8px 15px;
 }
 
 /* --- LOGIN/REGISTER STYLES (auth-*) --- */
@@ -364,7 +406,7 @@ footer {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: #f1f8e9; /* Fondo más claro para autenticación */
+    background: #f1f8e9;
 }
 
 .auth-container {
@@ -410,26 +452,6 @@ footer {
     transform: scale(1.01);
 }
 
-.register-button {
-    background-color: #4CAF50;
-}
-.register-button:hover {
-    background-color: #388E3C;
-}
-
-.switch-link {
-    text-align: center;
-    margin-top: 15px;
-    font-size: 0.9rem;
-    color: #555;
-}
-
-.switch-link a {
-    color: #2196F3;
-    text-decoration: none;
-    font-weight: 600;
-}
-
 .message-box {
     padding: 15px;
     border-radius: 8px;
@@ -437,6 +459,15 @@ footer {
     font-weight: bold;
     margin-bottom: 15px;
 }
+
+/* Ajuste para el mensaje de carga */
+.message-box.loading {
+    background-color: #fff9c4; 
+    border: 1px solid #ffeb3b;
+    color: #f9a825; 
+    font-size: 1.05rem;
+}
+
 .message-box.error {
     background-color: #ffebee;
     border: 1px solid #e57373;
@@ -448,154 +479,59 @@ footer {
     color: #2e7d32;
 }
 
-/* --- RESPONSIVE --- */
+/* === RESPONSIVE FIXES (Solución al problema de tamaño en móvil) === */
 @media (max-width: 768px) {
     body {
         padding: 10px;
     }
-    h1 {
-        font-size: 2rem;
+    
+    /* 1. AJUSTE CRÍTICO DEL SPLASH SCREEN */
+    .splash-logo {
+        width: 250px !important; /* Logo más pequeño en móvil */
     }
+
+    /* Reducción de fuentes en el Splash */
     #splash h1 {
-        font-size: 3rem;
+        font-size: 2.5rem !important;
     }
     #splash h2 {
-        font-size: 1.8rem;
+        font-size: 1.5rem !important;
     }
+    #splash p {
+        /* 🚨 NUEVO AJUSTE: Reduce el texto de la línea de copyright */
+        font-size: 1rem !important; 
+        padding: 0 10px; /* Añadimos padding para que no se salga */
+    }
+
+    /* 2. Ajuste del Título principal del juego */
+    h1 {
+        font-size: 2.5rem; 
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+
+    /* 3. Ajuste del nombre de usuario */
+    .usuario-info {
+        font-size: 1.2rem; 
+        padding: 6px 10px;
+        margin: 5px auto 15px auto;
+        max-width: 90%;
+        margin-right: 5px; 
+    }
+
+    /* 4. Ajuste general del grid de jugadores */
     .jugador {
         flex: 1 1 100%;
+        max-width: 100%;
     }
+    
+    /* Ajuste de controles */
     .controls {
         padding: 15px;
     }
-    select, input[type="text"] {
-        width: 100%;
-        max-width: 100%;
-        margin-top: 10px;
-        display: block;
+    
+    /* Ajuste del ranking */
+    #ranking {
+        font-size: 1.1rem;
     }
-    #inputJugadores input[type="text"] {
-        max-width: 100%;
-    }
-}
-
-/* --- Estilo para el Botón de WhatsApp --- */
-.whatsapp-btn {
-    display: inline-block;
-    background-color: #25D366; /* Color oficial de WhatsApp */
-    color: white !important;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 1rem;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    transition: background-color 0.3s, transform 0.2s;
-    border: none;
-}
-
-.whatsapp-btn:hover {
-    background-color: #1EBE4C;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-}
-
-.whatsapp-btn:active {
-    transform: translateY(0);
-}
-
-
-.footer-whatsapp-btn {
-    /* Ajustes específicos para el footer */
-    font-size: 0.9rem; /* Un poco más pequeño para el footer */
-    margin-top: 5px;
-    padding: 8px 15px;
-}
-
-
-/* style.css (Asegúrate de que este bloque exista y esté correcto) */
-
-/* --- FOOTER & WHATSAPP LINK --- */
-footer {
-    /* Eliminamos la posición 'fixed' o 'absolute' si la pusiste */
-    margin-top: 50px;
-    text-align: center;
-    font-size: 0.95rem;
-    color: #555;
-    font-style: italic;
-    padding: 20px;
-    border-top: 1px solid #ddd;
-    background: #ffffff;
-    border-radius: 10px;
-    /* QUITAMOS EL MAX-WIDTH y el margin: auto; que pueden estar ocultándolo
-       o si lo mantenemos, aseguramos que el margin-top sea suficiente. */
-    max-width: 800px; /* Se puede mantener el ancho máximo */
-    margin: 50px auto 20px auto; /* Centrado y con margen superior/inferior */
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
-}
-
-.whatsapp-btn {
-    /* Estilo del botón (que ya definimos) */
-    display: inline-block;
-    background-color: #25D366; 
-    color: white !important;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 700;
-    /* ... (resto de estilos del botón) ... */
-}
-
-
-/* style.css */
-.splash-logo {
-    width: 550px; /* Ajusta este valor al tamaño que desees */
-    height: auto; /* Mantiene la proporción */
-    margin-bottom: 20px;
-}
-
-/* style.css */
-.usuario-info {
-    text-align: center;
-    margin-bottom: 15px;
-    font-size: 1.1rem;
-    color: #4CAF50; /* Color verde amigable */
-}
-
-/* style.css */
-
-/* style.css */
-
-/* style.css */
-
-.usuario-info {
-    /* Estilos de visibilidad y fuente */
-    position: relative; 
-    z-index: 10; 
-    font-size: 1.5rem; 
-    font-weight: 700;
-    
-    /* 🚨 CAMBIOS CLAVE: Quitamos margin: auto y reducimos padding */
-    text-align: left; /* Alineación a la izquierda dentro de su espacio */
-    margin: 0 15px 0 0; /* Margen a la derecha para separarse del botón */
-    padding: 8px 15px;
-    
-    /* Colores */
-    color: #0d47a1 !important; 
-    background: #e3f2fd; 
-    border: 1px solid #bbdefb; 
-    border-radius: 8px;
-    
-    /* Permite que crezca, no lo fuerza a un ancho fijo */
-    max-width: none; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-
-.user-header-line {
-    display: flex; /* Habilita el modo flexbox */
-    justify-content: center; /* Centra el grupo de elementos (nombre + botón) */
-    align-items: center; /* Alinea verticalmente los elementos */
-    margin-bottom: 25px; /* Espacio debajo de la línea */
-    flex-wrap: wrap; /* Permite que los elementos se muevan a la siguiente línea en móvil */
 }
