@@ -1,320 +1,293 @@
-// script.js - Lógica del Juego y Login Estático
+// script.js — HOST CONTROLLER
+// ⚠️ REEMPLAZÁ con tu URL de Apps Script
+const API_URL = 'https://script.google.com/macros/s/AKfycbzu6aV1X2_11nPizpTSMmAQn3rnrxQ1zEKlPhPMoghQhXfuXcBKXB4x-JnxQ3IdFnLCZQ/exec';
 
-// === CONSTANTES ===
-const KEY_STATE = "telefunkenGameState";
-const LOGIN_KEY = "isLoggedIn"; 
-const MAX_ITEMS = 7; // Número de elementos de puntaje (TRICA a ESCALERA)
+const KEY_STATE  = "telefunkenGameState";
+const LOGIN_KEY  = "isLoggedIn";
+const MAX_ITEMS  = 7;
+const ITEMS      = ["TRICA","DOS TRICAS","TRES TRICAS","CUARTO","2 CUARTOS","QUINA","ESCALERA"];
 
-// === PERSISTENCIA Y ESTADO ===
+let currentGameId = null;
+let autoSaveTimer  = null;
+let estadoJugadores = [];
 
-function guardarEstado() {
-    const num = parseInt(document.getElementById('numJugadores').value) || 0;
-    const jugadores = [];
-    
-    // Recolectar datos del DOM
-    for (let i = 0; i < num; i++) {
-        const valores = [];
-        for (let j = 0; j < MAX_ITEMS; j++) {
-            const input = document.getElementById(`input${i}_${j}`);
-            valores.push(input ? input.value : ''); 
-        }
-        
-        jugadores.push({
-            nombre: (document.getElementById(`jugador${i}`)?.value || `JUGADOR ${i + 1}`).toUpperCase(),
-            monedas: parseInt(document.getElementById(`monedas${i}`)?.innerText) || 7,
-            valores,
-            total: parseInt(document.getElementById(`total${i}`)?.innerText) || 0
-        });
-    }
-
-    const estado = {
-        numJugadores: num,
-        jugadores: jugadores,
-        iniciado: (document.getElementById('jugadores')?.innerHTML.trim() !== '')
-    };
-    
-    localStorage.setItem(KEY_STATE, JSON.stringify(estado)); 
-}
-
-function aplicarEstado(estado) {
-    if (!estado || !estado.jugadores) return;
-
-    const select = document.getElementById('numJugadores');
-    select.value = estado.numJugadores;
-    
-    crearInputsJugadores(estado.jugadores); 
-
-    if (estado.iniciado) {
-        setTimeout(() => {
-            crearTablasJugadoresConDatos(estado.jugadores);
-        }, 100); 
-    }
-}
-
-function cargarEstado() {
-    const estadoGuardado = localStorage.getItem(KEY_STATE);
-    if (estadoGuardado) {
-        aplicarEstado(JSON.parse(estadoGuardado));
-    }
-}
-
-function guardarEstadoTemporal() {
-    const num = document.getElementById('numJugadores').value;
-    if (num) {
-        const jugadores = [];
-        for (let i = 0; i < num; i++) {
-            const input = document.getElementById(`jugador${i}`);
-            jugadores.push({ nombre: input ? input.value : '' });
-        }
-        const tempState = { numJugadores: num, jugadores, iniciado: false };
-        localStorage.setItem(KEY_STATE, JSON.stringify(tempState));
-    }
-}
-
-
-// === AUTENTICACIÓN Y VISUALIZACIÓN DE USUARIO ===
-
-function mostrarUsuario() {
-    const username = localStorage.getItem('currentUser');
-    const displayElement = document.getElementById('usuarioDisplay');
-    
-    if (username && displayElement) {
-        displayElement.innerHTML = `Sesión iniciada como: <strong>${username}</strong>`;
-    }
-}
-
+// ── AUTH ──────────────────────────────────────────────────────
 function checkAuth() {
-    const loggedIn = localStorage.getItem(LOGIN_KEY);
-    if (loggedIn !== 'true') {
-        window.location.href = 'login.html'; 
-        return false;
-    }
-    return true;
+  if (localStorage.getItem(LOGIN_KEY) !== 'true') {
+    window.location.href = 'login.html';
+    return false;
+  }
+  return true;
 }
 
 function logout() {
-    if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
-        localStorage.removeItem(LOGIN_KEY); 
-        localStorage.removeItem('currentUser'); 
-        localStorage.removeItem(KEY_STATE); 
-        window.location.href = 'login.html';     
-    }
+  if (confirm("¿Cerrar sesión? La partida activa se mantendrá en el servidor.")) {
+    localStorage.removeItem(LOGIN_KEY);
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem(KEY_STATE);
+    window.location.href = 'login.html';
+  }
 }
 
-
-// === LÓGICA DE INTERFAZ Y JUEGO ===
-
-function crearInputsJugadores(savedPlayers = []) {
-    const num = parseInt(document.getElementById('numJugadores').value) || 0;
-    const contenedor = document.getElementById('inputJugadores');
-    contenedor.innerHTML = '';
-
-    for (let i = 0; i < num; i++) {
-        const savedName = savedPlayers[i]?.nombre || '';
-        contenedor.innerHTML += `
-            <div>
-              <label>Jugador ${i + 1}: </label>
-              <input type="text" id="jugador${i}" placeholder="Nombre" value="${savedName}"
-                     oninput="this.value = this.value.toUpperCase(); guardarEstadoTemporal()" />
-            </div>
-        `;
-    }
+function mostrarUsuario() {
+  const u = localStorage.getItem('currentUser');
+  const el = document.getElementById('usuarioDisplay');
+  if (u && el) el.innerHTML = `Sesión: <strong>${u}</strong>`;
 }
 
-function generarTablaJugador(nombre, index) {
-    const items = ["TRICA", "DOS TRICAS", "TRES TRICAS", "CUARTO", "2 CUARTOS", "QUINA", "ESCALERA"];
-    let tabla = `
-        <div class="jugador" id="jugadorDiv${index}">
-          <h3>${nombre}</h3>
-          <table>
-            <tr><th>Elemento</th><th>Valor</th></tr>
-            <tr>
-              <td class="monedas">monedas</td>
-              <td id="monedas${index}">7</td>
-            </tr>
-            <tr>
-              <td>Acciones</td>
-              <td style="display: flex; justify-content: space-around;">
-                <button onclick="comprar(${index})" class="btn-secondary">Comprar</button>
-                <button onclick="devolver(${index})" class="btn-secondary">Devolver</button>
-              </td>
-            </tr>
-    `;
-    
-    items.forEach((item, i) => {
-        tabla += `
-          <tr>
-            <td>${item}</td>
-            <td>
-              <input type="number" min="0" id="input${index}_${i}" placeholder=" " 
-                     oninput="actualizarEstadoCampo(this); calcularTotal(${index})">
-            </td>
-          </tr>`;
+// ── SETUP: inputs de nombres ──────────────────────────────────
+function crearInputsJugadores() {
+  const num = parseInt(document.getElementById('numJugadores').value) || 0;
+  const cont = document.getElementById('inputJugadores');
+  cont.innerHTML = '';
+  for (let i = 0; i < num; i++) {
+    cont.innerHTML += `
+      <div class="input-jugador-row">
+        <label>Jugador ${i+1}</label>
+        <input type="text" id="jugador${i}" placeholder="Nombre"
+               oninput="this.value=this.value.toUpperCase()"/>
+      </div>`;
+  }
+}
+
+// ── CREAR PARTIDA ONLINE ─────────────────────────────────────
+async function crearPartida() {
+  const num = parseInt(document.getElementById('numJugadores').value);
+  if (!num || num < 2) { showSetupMsg('Seleccioná al menos 2 jugadores.', 'error'); return; }
+
+  const jugadores = [];
+  for (let i = 0; i < num; i++) {
+    const val = document.getElementById(`jugador${i}`)?.value.trim();
+    if (!val) { showSetupMsg(`Completá el nombre del jugador ${i+1}.`, 'error'); return; }
+    jugadores.push(val.toUpperCase());
+  }
+
+  const host = localStorage.getItem('currentUser');
+  const btn = document.getElementById('btnCrear');
+  btn.disabled = true;
+  btn.textContent = '⏳ Creando partida...';
+  showSetupMsg('Conectando con el servidor...', 'loading');
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'crearPartida', host, jugadores })
     });
+    const data = await res.json();
 
-    tabla += `<tr><td class="total">total</td><td id="total${index}" class="total">0</td></tr>`;
-    tabla += `</table></div>`;
-    
-    return tabla;
-}
-
-function crearTablasJugadores() {
-    const num = parseInt(document.getElementById('numJugadores').value);
-    if (!num || num < 1) return alert("Selecciona una cantidad de jugadores.");
-
-    const jugadoresDiv = document.getElementById('jugadores');
-    jugadoresDiv.innerHTML = '';
-
-    for (let i = 0; i < num; i++) {
-        const nombre = (document.getElementById(`jugador${i}`)?.value || `JUGADOR ${i + 1}`).toUpperCase();
-        jugadoresDiv.innerHTML += generarTablaJugador(nombre, i);
-    }
-    
-    guardarEstado(); 
-    actualizarRanking();
-}
-
-function crearTablasJugadoresConDatos(jugadoresData) {
-    const num = jugadoresData.length;
-    const jugadoresDiv = document.getElementById('jugadores');
-    jugadoresDiv.innerHTML = '';
-
-    for (let i = 0; i < num; i++) {
-        const nombre = jugadoresData[i]?.nombre || `JUGADOR ${i + 1}`;
-        jugadoresDiv.innerHTML += generarTablaJugador(nombre, i);
-    }
-
-    setTimeout(() => {
-        jugadoresData.forEach((j, i) => {
-            if (document.getElementById(`monedas${i}`)) {
-                document.getElementById(`monedas${i}`).innerText = j.monedas;
-            }
-            for (let k = 0; k < MAX_ITEMS; k++) {
-                const input = document.getElementById(`input${i}_${k}`);
-                if (input && j.valores[k] !== undefined) {
-                    input.value = j.valores[k];
-                    if (j.valores[k] !== '') input.classList.add('filled');
-                }
-            }
-            if (document.getElementById(`total${i}`)) {
-                document.getElementById(`total${i}`).innerText = j.total;
-            }
-        });
-        actualizarRanking();
-    }, 100);
-}
-
-function actualizarEstadoCampo(input) {
-    if (input.value.trim() !== '') {
-        input.classList.add('filled');
+    if (data.success) {
+      currentGameId = data.gameId;
+      estadoJugadores = data.jugadores;
+      localStorage.setItem(KEY_STATE, JSON.stringify({ gameId: currentGameId, host }));
+      iniciarPanelJuego();
     } else {
-        input.classList.remove('filled');
+      showSetupMsg('❌ Error: ' + data.message, 'error');
+      btn.disabled = false;
+      btn.textContent = '🚀 Crear Partida Online';
     }
-    // NOTA: Se evita llamar a guardarEstado aquí para prevenir demasiadas escrituras,
-    // y se deja que calcularTotal maneje el guardado.
+  } catch(e) {
+    showSetupMsg('❌ Error de conexión. Revisá la URL del script.', 'error');
+    btn.disabled = false;
+    btn.textContent = '🚀 Crear Partida Online';
+  }
+}
+
+// ── PANEL JUEGO ───────────────────────────────────────────────
+function iniciarPanelJuego() {
+  document.getElementById('panelSetup').style.display = 'none';
+  document.getElementById('panelJuego').style.display = 'block';
+  document.getElementById('gameIdDisplay').textContent = `🎮 Partida: ${currentGameId}`;
+
+  renderWhatsappLinks();
+  renderTablas();
+  actualizarRanking();
+
+  // Auto-save cada 10 segundos
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  autoSaveTimer = setInterval(guardarEnServidor, 10000);
+}
+
+function renderWhatsappLinks() {
+  const baseUrl = window.location.origin + window.location.pathname.replace('index.html','') + 'game-view.html';
+  const cont = document.getElementById('whatsappLinks');
+  cont.innerHTML = '<div class="wapp-bar-title">📤 Compartí el link con cada jugador:</div>';
+  estadoJugadores.forEach(j => {
+    const link = `${baseUrl}?game=${currentGameId}&player=${encodeURIComponent(j.nombre)}`;
+    const msg = encodeURIComponent(`¡Hola ${j.nombre}! Te invito a ver tu partida de TELEFUNKEN FAMILIAR 🎲\n${link}`);
+    cont.innerHTML += `
+      <div class="wapp-player-row">
+        <span class="wapp-nombre">${j.nombre}</span>
+        <a href="https://wa.me/?text=${msg}" target="_blank" class="whatsapp-btn wapp-small">
+          📱 Enviar link
+        </a>
+        <button onclick="copiarLink('${link}')" class="btn-copy">📋 Copiar</button>
+      </div>`;
+  });
+}
+
+function copiarLink(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    mostrarIndicador('📋 Link copiado!');
+  });
+}
+
+// ── TABLAS DE JUGADORES (HOST) ────────────────────────────────
+function renderTablas() {
+  const cont = document.getElementById('jugadores');
+  cont.innerHTML = '';
+  estadoJugadores.forEach((j, i) => {
+    cont.innerHTML += generarTablaJugador(j, i);
+  });
+}
+
+function generarTablaJugador(jugador, index) {
+  return `
+    <div class="jugador" id="jugadorDiv${index}">
+      <h3>${jugador.nombre}</h3>
+      <table>
+        <tr><th>Elemento</th><th>Valor</th></tr>
+        <tr>
+          <td class="monedas">🪙 Monedas</td>
+          <td id="monedas${index}">${jugador.monedas}</td>
+        </tr>
+        <tr>
+          <td>Acciones</td>
+          <td style="display:flex; gap:6px; justify-content:center; padding:6px;">
+            <button onclick="comprar(${index})" class="btn-secondary">Comprar</button>
+            <button onclick="devolver(${index})" class="btn-secondary">Devolver</button>
+          </td>
+        </tr>
+        ${ITEMS.map((item, i) => `
+        <tr>
+          <td>${item}</td>
+          <td>
+            <input type="number" min="0" id="input${index}_${i}"
+                   value="${jugador.valores[i] || ''}"
+                   placeholder=" "
+                   oninput="actualizarValor(${index}, ${i}, this.value)"
+                   class="${jugador.valores[i] ? 'filled' : ''}"/>
+          </td>
+        </tr>`).join('')}
+        <tr>
+          <td class="total">TOTAL</td>
+          <td id="total${index}" class="total">${jugador.total}</td>
+        </tr>
+      </table>
+    </div>`;
+}
+
+// ── LÓGICA DE JUEGO ───────────────────────────────────────────
+function actualizarValor(playerIdx, itemIdx, valor) {
+  estadoJugadores[playerIdx].valores[itemIdx] = valor ? parseInt(valor) : '';
+  calcularTotal(playerIdx);
+  marcarPendiente();
 }
 
 function comprar(index) {
-    let monedas = parseInt(document.getElementById(`monedas${index}`).innerText);
-    if (monedas > 0) {
-        monedas--;
-        document.getElementById(`monedas${index}`).innerText = monedas;
-        guardarEstado();
-        actualizarRanking();
-    }
+  if (estadoJugadores[index].monedas > 0) {
+    estadoJugadores[index].monedas--;
+    document.getElementById(`monedas${index}`).textContent = estadoJugadores[index].monedas;
+    marcarPendiente();
+    actualizarRanking();
+  }
 }
 
 function devolver(index) {
-    let monedas = parseInt(document.getElementById(`monedas${index}`).innerText);
-    monedas++;
-    document.getElementById(`monedas${index}`).innerText = monedas;
-    guardarEstado();
-    actualizarRanking();
+  estadoJugadores[index].monedas++;
+  document.getElementById(`monedas${index}`).textContent = estadoJugadores[index].monedas;
+  marcarPendiente();
+  actualizarRanking();
 }
 
 function calcularTotal(index) {
-    let total = 0;
-    for (let i = 0; i < MAX_ITEMS; i++) {
-        const input = document.getElementById(`input${index}_${i}`);
-        // 🛑 CRUCIAL: Convierte valores vacíos a 0 para el cálculo
-        total += parseInt(input?.value || 0);
-    }
-    
-    // 1. Actualiza el total en la tabla del jugador
-    document.getElementById(`total${index}`).innerText = total;
-    
-    // 2. Guarda el estado (que usa el total actualizado)
-    guardarEstado(); 
-    
-    // 3. LLAMADA FINAL: Asegura la actualización del ranking
-    actualizarRanking(); 
+  let total = 0;
+  estadoJugadores[index].valores.forEach(v => { total += parseInt(v) || 0; });
+  estadoJugadores[index].total = total;
+  const el = document.getElementById(`total${index}`);
+  if (el) el.textContent = total;
+  actualizarRanking();
 }
 
 function actualizarRanking() {
-    const numSelect = document.getElementById('numJugadores').value;
-    const num = numSelect ? parseInt(numSelect) : 0;
-    let puntajes = [];
-
-    for (let i = 0; i < num; i++) {
-        const inputNombre = document.getElementById(`jugador${i}`);
-        const tituloTabla = document.querySelector(`#jugadorDiv${i} h3`);
-        
-        let nombre = `JUGADOR ${i + 1}`;
-        
-        // Obtención robusta del nombre
-        if (inputNombre) {
-            nombre = inputNombre.value.toUpperCase() || nombre;
-        } else if (tituloTabla) {
-            nombre = tituloTabla.innerText.toUpperCase();
-        }
-        
-        // Lectura del total actualizado desde el DOM
-        const total = parseInt(document.getElementById(`total${i}`)?.innerText) || 0;
-        puntajes.push({ nombre, total });
-    }
-
-    // Ordenar de menor a mayor (el menor puntaje gana)
-    puntajes.sort((a, b) => a.total - b.total); 
-    
-    let rankingHTML = '<h3>🏆 Puntuaciones Mínimas (Ranking)</h3>';
-    if (puntajes[0]) rankingHTML += `<p>🏅 1º lugar: <strong>${puntajes[0].nombre}</strong> (${puntajes[0].total})</p>`;
-    if (puntajes[1]) rankingHTML += `<p>🥈 2º lugar: ${puntajes[1].nombre} (${puntajes[1].total})</p>`;
-    if (puntajes[2]) rankingHTML += `<p>🥉 3º lugar: ${puntajes[2].nombre} (${puntajes[2].total})</p>`;
-    
-    document.getElementById('ranking').innerHTML = rankingHTML;
+  const sorted = [...estadoJugadores].sort((a, b) => a.total - b.total);
+  const medallas = ['🥇','🥈','🥉'];
+  let html = '<h3>🏆 Ranking actual</h3>';
+  sorted.forEach((j, i) => {
+    html += `<p>${medallas[i] || (i+1)+'°'} <strong>${j.nombre}</strong> — ${j.total} pts (🪙${j.monedas})</p>`;
+  });
+  document.getElementById('ranking').innerHTML = html;
 }
 
+// ── SINCRONIZACIÓN CON SHEETS ─────────────────────────────────
+function marcarPendiente() {
+  const ind = document.getElementById('autoSaveIndicator');
+  if (ind) { ind.textContent = '⏳ Guardando...'; ind.className = 'save-indicator pending'; }
+  guardarEnServidor();
+}
+
+async function guardarEnServidor() {
+  if (!currentGameId) return;
+  const host = localStorage.getItem('currentUser');
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'guardarPuntajes', gameId: currentGameId, host, jugadores: estadoJugadores })
+    });
+    mostrarIndicador('✓ Sincronizado');
+  } catch(e) {
+    mostrarIndicador('⚠️ Sin conexión', true);
+  }
+}
+
+function mostrarIndicador(texto, error = false) {
+  const ind = document.getElementById('autoSaveIndicator');
+  if (!ind) return;
+  ind.textContent = texto;
+  ind.className = 'save-indicator ' + (error ? 'error' : 'ok');
+}
+
+// ── REINICIAR ─────────────────────────────────────────────────
 function reiniciarJuego() {
-    if (confirm("¿Estás seguro de que deseas comenzar de nuevo? Todos los datos de la partida se perderán.")) {
-        localStorage.removeItem(KEY_STATE);
-        location.reload();
-    }
+  if (confirm("¿Nueva partida? Esto borrará el estado actual.")) {
+    if (autoSaveTimer) clearInterval(autoSaveTimer);
+    currentGameId = null;
+    estadoJugadores = [];
+    localStorage.removeItem(KEY_STATE);
+    document.getElementById('panelJuego').style.display = 'none';
+    document.getElementById('panelSetup').style.display = 'block';
+    document.getElementById('numJugadores').value = '';
+    document.getElementById('inputJugadores').innerHTML = '';
+    document.getElementById('jugadores').innerHTML = '';
+    document.getElementById('ranking').innerHTML = '';
+    document.getElementById('btnCrear').disabled = false;
+    document.getElementById('btnCrear').textContent = '🚀 Crear Partida Online';
+  }
 }
 
+// ── HELPERS ───────────────────────────────────────────────────
+function showSetupMsg(text, type) {
+  const el = document.getElementById('setupMsg');
+  el.textContent = text;
+  el.className = 'message-box ' + type;
+  el.style.display = 'block';
+}
 
-// === INICIALIZACIÓN PRINCIPAL (FLUJO DE CARGA) ===
+// ── INIT ──────────────────────────────────────────────────────
 window.onload = function() {
-    // 1. Verificar sesión.
-    if (!checkAuth()) return; 
+  if (!checkAuth()) return;
+  mostrarUsuario();
 
-    // 2. MOSTRAR EL NOMBRE DE USUARIO
-    mostrarUsuario();
-
-    // 3. Cargar estado guardado
-    cargarEstado();
-
-    // 4. Ocultar el Splash Screen
-    setTimeout(() => {
-        const splash = document.getElementById("splash");
-        if (splash) {
-            splash.style.animation = "fadeOut 0.8s forwards";
-            setTimeout(() => {
-                splash.style.display = "none";
-                const mainContent = document.getElementById("mainContent");
-                if (mainContent) {
-                    mainContent.style.display = "block";
-                }
-            }, 800);
-        }
-    }, 2000); 
+  // Splash
+  setTimeout(() => {
+    const splash = document.getElementById("splash");
+    if (splash) {
+      splash.style.animation = "fadeOut 0.8s forwards";
+      setTimeout(() => {
+        splash.style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+      }, 800);
+    }
+  }, 2000);
 };

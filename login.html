@@ -1,124 +1,87 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login - TELEFUNKEN FAMILIAR</title>
-    <link href="style.css" rel="stylesheet" /> 
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login – TELEFUNKEN FAMILIAR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <link href="style.css" rel="stylesheet"/>
 </head>
 <body class="auth-body">
-    <div class="auth-container">
-        <div class="auth-box" id="login-box">
-            <h2>👋 Iniciar Sesión</h2>
-            
-            <div style="text-align: center; margin-bottom: 25px;">
-                <p style="margin-bottom: 10px; font-weight: 600; color: #555;">¿Necesitas el Usuario y Contraseña?</p>
-                <a 
-    href="https://wa.me/5491162841533?text=Hola,%20solicito%20ingreso%20al%20juego.%20Usuario%20preferido/otorgado:%20[Esperando%20respuesta]" 
-    target="_blank" 
-    class="whatsapp-btn"
->
-    🟢 Solicitar Acceso por WhatsApp
-</a>
-            </div>
-            <form id="login-form">
-                <div class="input-group">
-                    <label for="login-user">👤 Usuario:</label>
-                    <input type="text" id="login-user" required>
-                </div>
-                <div class="input-group">
-                    <label for="login-pass">🔒 Contraseña:</label>
-                    <input type="password" id="login-pass" required>
-                </div>
-                <button type="submit" class="auth-button">Entrar al Juego</button>
-            </form>
+
+  <div class="auth-container">
+    <div class="auth-box">
+      <img src="logo.png" alt="Telefunken" class="auth-logo"/>
+      <h2>Iniciar Sesión</h2>
+
+      <div class="whatsapp-access">
+        <p>¿No tenés usuario?</p>
+        <a href="https://wa.me/5491162841533?text=Hola,%20quiero%20acceso%20a%20Telefunken%20Familiar"
+           target="_blank" class="whatsapp-btn">🟢 Solicitar acceso por WhatsApp</a>
+      </div>
+
+      <form id="login-form">
+        <div class="input-group">
+          <label for="login-user">👤 Usuario</label>
+          <input type="text" id="login-user" placeholder="Tu usuario" required autocomplete="username"/>
         </div>
+        <div class="input-group">
+          <label for="login-pass">🔒 Contraseña</label>
+          <input type="password" id="login-pass" placeholder="Tu contraseña" required autocomplete="current-password"/>
+        </div>
+        <button type="submit" class="auth-button">Entrar al Juego 🎲</button>
+      </form>
 
-        <div id="auth-message" class="message-box" style="display: none;"></div>
+      <div id="auth-message" class="message-box" style="display:none;"></div>
     </div>
+  </div>
 
-    <script>
-    // 🚨 2. PEGA AQUÍ LA URL COMPLETA DE LA APLICACIÓN WEB DE APPS SCRIPT
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxNWqM-pJX1PMIa6Kk5X-GPPXt0cEN7uMiSMXVAnmnbo3AhkpEKKzDK2iDmsP3dUnY5Xg/exec'; 
-                     
-    const LOGIN_KEY = "isLoggedIn"; 
+<script>
+  // ⚠️ REEMPLAZÁ con tu URL de Apps Script
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzu6aV1X2_11nPizpTSMmAQn3rnrxQ1zEKlPhPMoghQhXfuXcBKXB4x-JnxQ3IdFnLCZQ/exec';
 
-    // Mantiene las funciones de mensaje (asumiendo que las tienes en el HTML)
-    function displayMessage(msg, type) {
-        const msgBox = document.getElementById('auth-message');
-        msgBox.innerText = msg;
-        msgBox.className = `message-box ${type}`;
-        msgBox.style.display = 'block';
-    }
+  document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-user').value.trim();
+    const password = document.getElementById('login-pass').value;
+    const btn = this.querySelector('.auth-button');
+    const msg = document.getElementById('auth-message');
 
-    // NUEVA FUNCIÓN: Muestra el mensaje de carga y deshabilita el botón
-    function showLoadingMessage() {
-        const form = document.getElementById('login-form');
-        const button = form.querySelector('.auth-button');
-        
-        displayMessage("🔄 Comparando credenciales en la base de datos...", 'loading');
-        button.disabled = true; // Deshabilita el botón para evitar clics dobles
-    }
-    
-    // NUEVA FUNCIÓN: Oculta el mensaje de carga y habilita el botón
-    function hideLoadingMessage() {
-        const form = document.getElementById('login-form');
-        const button = form.querySelector('.auth-button');
-        
-        // La función displayMessage ya maneja si se muestra éxito o error
-        button.disabled = false; // Habilita el botón
-    }
+    btn.disabled = true;
+    btn.textContent = '🔄 Verificando...';
+    showMsg('Comparando credenciales...', 'loading');
 
-    document.getElementById('login-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const username = document.getElementById('login-user').value.trim();
-        const password = document.getElementById('login-pass').value;
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'login', username, password })
+      });
+      const data = await res.json();
 
-        // 1. Mostrar mensaje de carga inmediatamente
-        showLoadingMessage(); 
-
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' }, 
-                body: JSON.stringify({ username, password })
-            });
-            
-            // Si hay un error de red o HTTP (ej. 404, 500)
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
-            }
-
-            const data = await response.json(); 
-
-            // 2. Ocultar el mensaje de carga antes de mostrar el resultado final
-            // NOTA: No llamamos a hideLoadingMessage() aquí, lo haremos al final del bloque try/catch.
-
-            if (data.success) {
-        localStorage.setItem(LOGIN_KEY, 'true');
-        
-        // 🚨 CAMBIO AQUÍ: GUARDAMOS EL NOMBRE DE USUARIO
-        localStorage.setItem('currentUser', username.toUpperCase()); 
-        
-        displayMessage(`🥳 ¡Bienvenido, ${username.toUpperCase()}! Redirigiendo...`, 'success');
-        
+      if (data.success) {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', data.username);
+        showMsg(`🥳 ¡Bienvenido, ${data.username}! Redirigiendo...`, 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+      } else {
+        showMsg('❌ ' + data.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Entrar al Juego 🎲';
+      }
+    } catch(err) {
+      showMsg('❌ Error de conexión. Revisá la URL del script.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Entrar al Juego 🎲';
+    }
+  });
 
-            } else {
-                displayMessage(`❌ Error de Login: ${data.message}`, 'error');
-                localStorage.removeItem(LOGIN_KEY);
-            }
-        } catch (error) {
-            console.error('Fetch error:', error);
-            displayMessage("❌ Error de conexión con el servicio. Verifique la URL de la API.", 'error');
-            localStorage.removeItem(LOGIN_KEY);
-        } finally {
-             // 3. Asegurar que el botón se habilite de nuevo (si no hubo redirección)
-             hideLoadingMessage(); 
-        }
-    });
+  function showMsg(text, type) {
+    const el = document.getElementById('auth-message');
+    el.textContent = text;
+    el.className = 'message-box ' + type;
+    el.style.display = 'block';
+  }
 </script>
 </body>
-
 </html>

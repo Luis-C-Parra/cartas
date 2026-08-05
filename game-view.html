@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TELEFUNKEN – Tu partida</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <link href="style.css" rel="stylesheet"/>
+  <link rel="icon" href="logo.png" type="image/png"/>
+</head>
+<body>
+
+<div id="loadingScreen" class="loading-screen">
+  <img src="logo.png" alt="Logo" style="width:120px; margin-bottom:20px;"/>
+  <p>Cargando partida...</p>
+  <div class="spinner"></div>
+</div>
+
+<div id="viewContent" style="display:none;">
+
+  <header class="view-header">
+    <img src="logo.png" alt="Logo" class="view-logo"/>
+    <div>
+      <div class="view-title">TELEFUNKEN FAMILIAR</div>
+      <div id="hostLabel" class="view-subtitle"></div>
+    </div>
+    <div id="refreshBadge" class="refresh-badge">🔄 En vivo</div>
+  </header>
+
+  <!-- Tarjeta destacada: TU jugador -->
+  <div id="miTarjeta" class="mi-tarjeta-container"></div>
+
+  <!-- Ranking -->
+  <div id="rankingView" class="ranking-view"></div>
+
+  <!-- Todas las tablas (solo lectura) -->
+  <h3 class="section-title">📋 Tabla completa</h3>
+  <div id="todasTablas" class="jugadores-grid readonly-grid"></div>
+
+  <div class="view-footer">
+    <p>Vista de solo lectura · Se actualiza cada 8 seg</p>
+    <div id="lastUpdate" class="last-update"></div>
+  </div>
+
+</div>
+
+<div id="errorScreen" style="display:none;" class="error-screen">
+  <img src="logo.png" alt="Logo" style="width:100px; margin-bottom:20px;"/>
+  <h2>Partida no encontrada</h2>
+  <p>El link puede haber expirado o ser incorrecto.<br/>Pedile al host que te reenvíe el link.</p>
+</div>
+
+<script>
+// ⚠️ REEMPLAZÁ con tu URL de Apps Script
+const API_URL = 'https://script.google.com/macros/s/AKfycbzu6aV1X2_11nPizpTSMmAQn3rnrxQ1zEKlPhPMoghQhXfuXcBKXB4x-JnxQ3IdFnLCZQ/exec';
+
+const ITEMS = ["TRICA","DOS TRICAS","TRES TRICAS","CUARTO","2 CUARTOS","QUINA","ESCALERA"];
+
+// Leer parámetros de la URL
+const params = new URLSearchParams(window.location.search);
+const GAME_ID = params.get('game');
+const MI_NOMBRE = (params.get('player') || '').toUpperCase();
+
+let intervalId = null;
+
+async function cargarPartida() {
+  if (!GAME_ID) { mostrarError(); return; }
+
+  try {
+    const res = await fetch(`${API_URL}?gameId=${GAME_ID}`);
+    const data = await res.json();
+
+    if (!data.success) { mostrarError(); return; }
+
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('viewContent').style.display = 'block';
+
+    document.getElementById('hostLabel').textContent = `Partida creada por ${data.host}`;
+    document.getElementById('lastUpdate').textContent =
+      'Última actualización: ' + new Date(data.updated).toLocaleTimeString('es-AR');
+
+    renderMiTarjeta(data.jugadores);
+    renderRanking(data.jugadores);
+    renderTodasTablas(data.jugadores);
+
+  } catch(e) {
+    mostrarError();
+  }
+}
+
+function renderMiTarjeta(jugadores) {
+  const yo = jugadores.find(j => j.nombre === MI_NOMBRE);
+  const contenedor = document.getElementById('miTarjeta');
+  if (!yo) {
+    contenedor.innerHTML = `<div class="mi-tarjeta mi-tarjeta-unknown">
+      👋 Hola! Sos espectador de esta partida.
+    </div>`;
+    return;
+  }
+
+  const pos = getRanking(jugadores).findIndex(j => j.nombre === MI_NOMBRE) + 1;
+  const medallas = ['🥇','🥈','🥉'];
+  const medalla = medallas[pos-1] || `#${pos}`;
+
+  contenedor.innerHTML = `
+    <div class="mi-tarjeta">
+      <div class="mi-tarjeta-header">
+        <span class="mi-nombre">${medalla} ${yo.nombre}</span>
+        <span class="mi-posicion">Posición ${pos}° de ${jugadores.length}</span>
+      </div>
+      <div class="mi-stats">
+        <div class="stat-box">
+          <div class="stat-val">${yo.monedas}</div>
+          <div class="stat-lbl">🪙 Monedas</div>
+        </div>
+        <div class="stat-box stat-total">
+          <div class="stat-val">${yo.total}</div>
+          <div class="stat-lbl">📊 Total pts</div>
+        </div>
+      </div>
+      <table class="mi-tabla-detalle">
+        <tr><th>Elemento</th><th>Pts</th></tr>
+        ${ITEMS.map((item, i) => `
+          <tr>
+            <td>${item}</td>
+            <td class="${yo.valores[i] ? 'filled-cell' : ''}">${yo.valores[i] || '–'}</td>
+          </tr>`).join('')}
+      </table>
+    </div>`;
+}
+
+function renderRanking(jugadores) {
+  const sorted = getRanking(jugadores);
+  const medallas = ['🥇','🥈','🥉'];
+  document.getElementById('rankingView').innerHTML = `
+    <h3 class="section-title">🏆 Ranking</h3>
+    <div class="ranking-cards">
+      ${sorted.map((j, i) => `
+        <div class="rank-card ${j.nombre === MI_NOMBRE ? 'rank-yo' : ''}">
+          <span class="rank-medal">${medallas[i] || (i+1)+'°'}</span>
+          <span class="rank-nombre">${j.nombre}</span>
+          <span class="rank-pts">${j.total} pts</span>
+          <span class="rank-monedas">🪙${j.monedas}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderTodasTablas(jugadores) {
+  const contenedor = document.getElementById('todasTablas');
+  contenedor.innerHTML = jugadores.map(j => `
+    <div class="jugador ${j.nombre === MI_NOMBRE ? 'jugador-yo' : ''}">
+      <h3>${j.nombre === MI_NOMBRE ? '👤 ' : ''}${j.nombre}</h3>
+      <table>
+        <tr><th>Elemento</th><th>Valor</th></tr>
+        <tr><td class="monedas">Monedas</td><td>${j.monedas}</td></tr>
+        ${ITEMS.map((item, i) => `
+          <tr>
+            <td>${item}</td>
+            <td class="${j.valores[i] ? 'filled-cell' : ''}">${j.valores[i] || ''}</td>
+          </tr>`).join('')}
+        <tr><td class="total">TOTAL</td><td class="total">${j.total}</td></tr>
+      </table>
+    </div>`).join('');
+}
+
+function getRanking(jugadores) {
+  return [...jugadores].sort((a, b) => a.total - b.total);
+}
+
+function mostrarError() {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('errorScreen').style.display = 'flex';
+}
+
+// Iniciar
+cargarPartida();
+// Auto-refresh cada 8 segundos
+intervalId = setInterval(cargarPartida, 8000);
+</script>
+</body>
+</html>
