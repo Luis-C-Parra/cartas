@@ -236,7 +236,16 @@ footer {
   background:#0d47a1; color:white; border-radius:16px;
   padding:22px; box-shadow:0 8px 20px rgba(13,71,161,.35);
 }
-.mi-tarjeta-unknown { text-align:center; font-size:1.1rem; padding:30px; background:#78909c; }
+.mi-tarjeta-unknown { text-align:center; font-size:1.1rem; padding:30px; background:#78909c; color:white; }
+.mi-tarjeta { color: white; }
+.mi-tarjeta-header { color: white; }
+.mi-nombre { color: white; }
+.mi-posicion { color: rgba(255,255,255,0.8); }
+.stat-val { color: white; }
+.stat-lbl { color: rgba(255,255,255,0.8); }
+.mi-tabla-detalle th { color: white; }
+.mi-tabla-detalle td { color: #1a1a1a; background: rgba(255,255,255,0.9); }
+.mi-tabla-detalle .filled-cell { color: #1b5e20; background: #c8e6c9; }
 .mi-tarjeta-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
 .mi-nombre { font-size:1.4rem; font-weight:900; }
 .mi-posicion { font-size:0.85rem; opacity:.8; }
