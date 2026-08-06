@@ -4,7 +4,6 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login – TELEFUNKEN FAMILIAR</title>
-
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
   <link href="mesa.css" rel="stylesheet"/>
   
@@ -189,7 +188,7 @@
         } else {
           showMsg('❌ ' + (data.message || 'Credenciales inválidas'), 'error');
           btn.disabled = false;
-          btn.textContent = 'Entrar al Juego ♣️';
+          btn.textContent = 'Entrar al Juego 🎲';
         }
       } catch(err) {
         console.error(err);
@@ -197,6 +196,8 @@
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('currentUser', username.toUpperCase());
         showMsg(`🥳 Entrando como ${username.toUpperCase()}...`, 'success');
+        
+        // 🚨 SOLUCIÓN APLICADA: Redirige a index.html y NO a mesa.html
         setTimeout(() => { window.location.href = 'index.html'; }, 800);
       }
     });
@@ -210,86 +211,3 @@
   </script>
 </body>
 </html>
-=======
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-  <link href="style.css" rel="stylesheet"/>
-</head>
-<body class="auth-body">
-
-  <div class="auth-container">
-    <div class="auth-box">
-      <img src="logo.png" alt="Telefunken" class="auth-logo"/>
-      <h2>Iniciar Sesión</h2>
-
-      <div class="whatsapp-access">
-        <p>¿No tenés usuario?</p>
-        <a href="https://wa.me/5491162841533?text=Hola,%20quiero%20acceso%20a%20Telefunken%20Familiar"
-           target="_blank" class="whatsapp-btn">🟢 Solicitar acceso por WhatsApp</a>
-      </div>
-
-      <form id="login-form">
-        <div class="input-group">
-          <label for="login-user">👤 Usuario</label>
-          <input type="text" id="login-user" placeholder="Tu usuario" required autocomplete="username"/>
-        </div>
-        <div class="input-group">
-          <label for="login-pass">🔒 Contraseña</label>
-          <input type="password" id="login-pass" placeholder="Tu contraseña" required autocomplete="current-password"/>
-        </div>
-        <button type="submit" class="auth-button">Entrar al Juego 🎲</button>
-      </form>
-
-      <div id="auth-message" class="message-box" style="display:none;"></div>
-    </div>
-  </div>
-
-<script>
-  // ⚠️ REEMPLAZÁ con tu URL de Apps Script
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzu6aV1X2_11nPizpTSMmAQn3rnrxQ1zEKlPhPMoghQhXfuXcBKXB4x-JnxQ3IdFnLCZQ/exec';
-
-  document.getElementById('login-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const username = document.getElementById('login-user').value.trim();
-    const password = document.getElementById('login-pass').value;
-    const btn = this.querySelector('.auth-button');
-    const msg = document.getElementById('auth-message');
-
-    btn.disabled = true;
-    btn.textContent = '🔄 Verificando...';
-    showMsg('Comparando credenciales...', 'loading');
-
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'login', username, password })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', data.username);
-        showMsg(`🥳 ¡Bienvenido, ${data.username}! Redirigiendo...`, 'success');
-        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
-      } else {
-        showMsg('❌ ' + data.message, 'error');
-        btn.disabled = false;
-        btn.textContent = 'Entrar al Juego 🎲';
-      }
-    } catch(err) {
-      showMsg('❌ Error de conexión. Revisá la URL del script.', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Entrar al Juego 🎲';
-    }
-  });
-
-  function showMsg(text, type) {
-    const el = document.getElementById('auth-message');
-    el.textContent = text;
-    el.className = 'message-box ' + type;
-    el.style.display = 'block';
-  }
-</script>
-</body>
-</html>
->>>>>>> e6adf89f81f75407b94c8dfc2479ace99e5250e4
