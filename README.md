@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🎲 TELEFUNKEN FAMILIAR
 
 **Juego de dados y cartas clásico, ahora 100% online y familiar.**
@@ -79,3 +80,7 @@ Requiere internet (Firebase + fuentes).
 
 > **TELEFUNKEN FAMILIAR** — hecho con ❤️ para jugar en familia.
 > © 2026 · Lic. Luis C. Parra
+=======
+# cartas
+juego de cartas telefunken
+>>>>>>> e6adf89f81f75407b94c8dfc2479ace99e5250e4
