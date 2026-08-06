@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TELEFUNKEN – Tu mano</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+<link href="mesa.css" rel="stylesheet"/>
+<link rel="icon" href="logo.png" type="image/png"/>
+</head>
+<body>
+<div id="splash"><img src="logo.png" class="splash-logo"/><h1>TELEFUNKEN</h1><h2>FAMILIAR</h2></div>
+<div id="girarAviso" onclick="this.style.display='none'">📱↻ Girá el celular a horizontal (tocá para ocultar)</div>
+
+<div id="loadingScreen" class="loading-screen">
+  <img src="logo.png" style="width:100px;margin-bottom:16px;"/>
+  <p>Cargando tu mesa...</p><div class="spinner"></div>
+</div>
+
+<div id="mainContent" style="display:none;">
+  <header class="mesa-header">
+    <img src="logo.png" class="header-logo"/>
+    <div class="header-info">
+      <span id="miNombreDisplay" class="header-user"></span>
+      <span id="rondaBadge" class="ronda-badge"></span>
+    </div>
+  </header>
+  <div id="turnoBar" class="turno-bar"></div>
+  <div class="wapp-bar"><div class="wapp-title">🏆 Puntajes</div><div id="puntajesList"></div></div>
+
+  <div class="mesa-central">
+    <div class="zona-mazo">
+      <div class="mazo-pile" id="btnRobar" onclick="robarDelMazo()">
+        <div class="mazo-count" id="mazoCant">0</div>
+        <div class="mazo-label">📦 Mazo</div><div class="mazo-sub">Toca para robar</div>
+      </div>
+    </div>
+    <div class="zona-descarte">
+      <div class="descarte-label">🃏 Mesa</div>
+      <div id="cartaMesa" class="descarte-slot"><span class="descarte-vacio">—</span></div>
+      <div class="descarte-sub" id="descarteSub"></div>
+    </div>
+  </div>
+
+  <div id="estadoJugs" class="estado-jugadores"></div>
+  <div class="jugadas-mesa"><h3>🧾 Jugadas en la mesa</h3><div id="jugadasMesa"></div></div>
+  <div id="soparPanel" class="sopar-panel" style="display:none;">
+    <div class="wapp-title">🧹 SOPAR — opciones</div><div id="soparOpts"></div>
+  </div>
+
+  <div class="mi-mano-section">
+    <h3>🃏 Tu mano <span id="cntMano" class="contador-mano"></span></h3>
+    <div class="mano-acciones">
+      <button onclick="ordenarMano()" class="btn-ordenar">🔃 Ordenar</button>
+    </div>
+    <div id="miMano" class="mi-mano"></div>
+    <div class="hint-tapa">👆 Tocá para seleccionar · ✊ Deslizá para acomodar · 💰 Tocá la carta de la mesa para COMPRAR<br>
+    ⚠️ La jugada se baja COMPLETA de una vez · 💰 Comprar: en cualquier momento, solo la carta recién tirada (si te quedan monedas) · 🧹 Sopar: desde tu siguiente turno después de bajar tu jugada</div>
+    <div class="acciones-juego">
+      <button onclick="bajarJugada()" class="btn-tapa" id="btnBajar" disabled>📥 BAJAR</button>
+      <button onclick="abrirSopar()" class="btn-primary" id="btnSopar" disabled>🧹 SOPAR</button>
+      <button onclick="tirarCarta()" class="btn-tirar" id="btnTirar" disabled>↩ Tirar a la mesa</button>
+      <button onclick="tapar()" class="btn-tapa" id="btnTapa" disabled>🟢 TAPA — Cerré la ronda</button>
+    </div>
+  </div>
+  <div id="logEventos" class="log-eventos"></div>
+</div>
+
+<div id="errorScreen" style="display:none;" class="error-screen">
+  <img src="logo.png" style="width:80px;margin-bottom:12px;"/>
+  <h2>Partida no encontrada</h2><p>Pedile al host que te reenvíe el link.</p>
+</div>
+
+<button class="theme-toggle" id="themeToggle" title="Cambiar tema visual">🌙</button>
+<footer class="footer-copy">© 2026 TELEFUNKEN FAMILIAR · Lic. Luis C. Parra · Todos los derechos reservados</footer>
+<script type="module" src="juego.js"></script>
+
+<script>
+setTimeout(()=>{const s=document.getElementById('splash');
+ if(s&&s.style.display!=='none'){s.style.display='none';
+ const m=document.getElementById('mainContent');if(m)m.style.display='block';}},6000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login – TELEFUNKEN FAMILIAR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link href="mesa.css" rel="stylesheet"/>
+  
+  <script>
+    // Si ya está logueado, redirigir inmediatamente a la mesa
+    if (localStorage.getItem('isLoggedIn') === 'true') {
+        window.location.replace('index.html');
+    }
+  </script>
+
+  <style>
+    body { display:flex; flex-direction:column; align-items:center;
+           justify-content:center; padding:24px 16px 10px; }
+    .auth-logo {
+      width: 92px; height: auto; margin: 0 auto 12px; display: block;
+      filter: drop-shadow(0 4px 12px rgba(60,74,57,.25));
+      animation: flota 3s ease-in-out infinite;
+    }
+    @keyframes flota { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+    .auth-box { width: 100%; max-width: 420px; }
+    .auth-box h2 { text-align:center; color:#b08a2e; margin-bottom:18px; font-size:1.5rem; }
+    .input-group { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+    .input-group label { font-size:.85rem; font-weight:600; color:#6d8268; }
+    .input-group input {
+      padding:11px 14px; border-radius:10px;
+      border:1px solid rgba(60,74,57,.2); background:#fff;
+      font:inherit; color:#3c4a39; outline:none;
+      transition:border .2s, box-shadow .2s;
+    }
+    .input-group input:focus { border-color:#c9a24b; box-shadow:0 0 0 3px rgba(201,162,75,.2); }
+    .apodo-row { display:flex; gap:8px; }
+    .apodo-row input { flex:1; }
+    .btn-apodo {
+      background:#cbd5e1; color:#334155; border:none;
+      padding:10px 14px; border-radius:10px; cursor:pointer;
+      font-weight:700; font-family:inherit; font-size:.85rem;
+      transition:all .2s; white-space:nowrap;
+    }
+    .btn-apodo:hover { background:#b7c4d6; }
+    .whatsapp-access { text-align:center; margin-bottom:18px;
+                       padding-bottom:18px; border-bottom:1px solid rgba(60,74,57,.1); }
+    .whatsapp-access p { font-size:.85rem; color:#6d8268; margin-bottom:10px; }
+    .rules-section { text-align:center; margin-top:22px;
+                     padding-top:18px; border-top:1px solid rgba(60,74,57,.1); }
+    .rules-section p { font-size:.85rem; color:#6d8268; margin-bottom:10px; }
+    .btn-rules {
+      background:rgba(123,171,132,.18); color:#4f7a56;
+      border:1px solid rgba(123,171,132,.5); padding:10px 18px;
+      border-radius:10px; font-weight:700; font-size:.9rem;
+      cursor:pointer; font-family:inherit; transition:all .2s;
+    }
+    .btn-rules:hover { background:rgba(123,171,132,.32); }
+    .modal { position:fixed; inset:0; background:rgba(30,40,28,.5);
+             backdrop-filter:blur(4px); display:flex;
+             align-items:center; justify-content:center;
+             padding:18px; z-index:1000; }
+    .modal[hidden] { display:none; }
+    .modal-card { background:#fdfcf7; max-width:460px; width:100%;
+                  max-height:80vh; overflow-y:auto; border-radius:18px;
+                  padding:24px; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+    .modal-card h2 { color:#b08a2e; margin-bottom:14px; font-size:1.15rem; }
+    .modal-card ul { list-style:none; display:flex; flex-direction:column;
+                     gap:9px; font-size:.88rem; line-height:1.45; padding:0; }
+    .modal-card li { background:rgba(123,171,132,.12);
+                     border:1px solid rgba(123,171,132,.25);
+                     padding:10px 12px; border-radius:10px; }
+    .btn-cerrar-modal { margin-top:16px; width:100%;
+                        background:linear-gradient(135deg,#e9c87e,#d9a75f);
+                        color:#4a3a17; border:none; padding:12px;
+                        border-radius:10px; font-weight:800;
+                        cursor:pointer; font-family:inherit; }
+  </style>
+</head>
+<body>
+
+  <div class="auth-box panel">
+    <img src="logo.png" alt="Telefunken" class="auth-logo" onerror="this.style.display='none'"/>
+    <h2>Iniciar Sesión</h2>
+
+    <div class="whatsapp-access">
+      <p>¿No tenés usuario?</p>
+      <a href="https://wa.me/5491162841533?text=Hola,%20quiero%20acceso%20a%20Telefunken%20Familiar"
+         target="_blank" class="whatsapp-btn">🟢 Solicitar acceso por WhatsApp</a>
+    </div>
+
+    <form id="login-form">
+      <div class="input-group">
+        <label for="login-user">👤 Usuario</label>
+        <div class="apodo-row">
+          <input type="text" id="login-user" placeholder="Tu usuario" required autocomplete="username"/>
+          <button type="button" id="btn-apodo" class="btn-apodo" title="Generar Apodo Aleatorio">✨ Apodo</button>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label for="login-pass">🔒 Contraseña</label>
+        <input type="password" id="login-pass" placeholder="Tu contraseña" required autocomplete="current-password"/>
+      </div>
+      
+      <div id="auth-message" class="msg-box" style="display:none;"></div>
+      
+      <button type="submit" class="btn-primary" style="width:100%; margin-top:6px;">Entrar al Juego 🎲</button>
+    </form>
+
+    <div class="rules-section">
+      <p>¿Olvidaste cómo jugar?</p>
+      <button type="button" id="btn-reglas" class="btn-rules">📚 Ver Reglas</button>
+    </div>
+  </div>
+
+  <div id="modalReglas" class="modal" hidden>
+    <div class="modal-card">
+      <h2>📚 Reglas de TELEFUNKEN FAMILIAR</h2>
+      <ul>
+        <li>🎯 <b>Objetivo:</b> quedarte sin cartas armando los juegos que pide cada ronda. Gana el que menos puntos acumula.</li>
+        <li>🃏 <b>Mazo:</b> 2 mazos de cartas inglesas + jokers. Juegan de 2 a 8 jugadores.</li>
+        <li>🔄 <b>Turno:</b> robá del mazo o levantá la carta de la mesa, y después descartá una carta.</li>
+        <li>🧩 <b>Juegos:</b> según la ronda hay que formar tríos, cuartetas o escaleras.</li>
+        <li>🟢 <b>TAPA:</b> cuando completás el juego de la ronda tocás "TAPA" y cerrás la ronda.</li>
+        <li>🔢 <b>Puntos:</b> las cartas que te quedan en la mano suman en contra (J, Q y K valen 10, el joker 20).</li>
+        <li>🏆 <b>Ganador:</b> el de menor puntaje al terminar todas las rondas.</li>
+      </ul>
+      <button type="button" id="btnCerrar" class="btn-cerrar-modal">Cerrar</button>
+    </div>
+  </div>
+
+  <footer class="footer-copy">
+    © 2026 TELEFUNKEN FAMILIAR · Lic. Luis C. Parra · Todos los derechos reservados
+  </footer>
+
+  <script>
+    // --- APODOS LOCALES (sin IA) ---
+    const APODOS = [
+      "El Rey de la Trica", "Tía Tramposa", "Manos de Tijera", "El Barajador",
+      "Doña Escalera", "El Joker", "Don Triunfo", "La Carta Oculta",
+      "El Tapador", "Mago del Mazo", "Señor Póker", "La Baraja Loca",
+      "El Descarte", "Don TAPA", "La Suerte", "Truco Master",
+      "El Picaflor", "Mano Santa", "El Carteador", "La Abuela Letal"
+    ];
+
+    document.getElementById('btn-apodo').addEventListener('click', () => {
+      const apodo = APODOS[Math.floor(Math.random() * APODOS.length)];
+      document.getElementById('login-user').value = apodo;
+    });
+
+    // --- MODAL REGLAS ---
+    const modal = document.getElementById('modalReglas');
+    document.getElementById('btn-reglas').addEventListener('click', () => modal.hidden = false);
+    document.getElementById('btnCerrar').addEventListener('click', () => modal.hidden = true);
+    modal.addEventListener('click', e => { if(e.target === modal) modal.hidden = true; });
+
+    // --- AUTENTICACIÓN CON GOOGLE APPS SCRIPT ---
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzu6aV1X2_11nPizpTSMmAQn3rnrxQ1zEKlPhPMoghQhXfuXcBKXB4x-JnxQ3IdFnLCZQ/exec'; 
+
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('login-user').value.trim();
+      const password = document.getElementById('login-pass').value;
+      const btn = this.querySelector('button[type="submit"]');
+
+      btn.disabled = true;
+      btn.textContent = '🔄 Verificando...';
+      showMsg('Comparando credenciales...', 'success');
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'login', username, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          // ⭐ Guardar sesión (clave exacta que lee juego.js)
+          localStorage.setItem('isLoggedIn', 'true');
+          localStorage.setItem('currentUser', username.toUpperCase()); 
+          
+          showMsg(`🥳 ¡Bienvenido, ${username.toUpperCase()}! Redirigiendo...`, 'success');
+          
+          // Redirigir a la mesa
+          setTimeout(() => { window.location.href = 'index.html'; }, 800);
+        } else {
+          showMsg('❌ ' + (data.message || 'Credenciales inválidas'), 'error');
+          btn.disabled = false;
+          btn.textContent = 'Entrar al Juego ♣️';
+        }
+      } catch(err) {
+        console.error(err);
+        // Si falla el fetch, entrar igual (modo demo)
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', username.toUpperCase());
+        showMsg(`🥳 Entrando como ${username.toUpperCase()}...`, 'success');
+        setTimeout(() => { window.location.href = 'index.html'; }, 800);
+      }
+    });
+
+    function showMsg(text, type) {
+      const el = document.getElementById('auth-message');
+      el.textContent = text; 
+      el.className = 'msg-box ' + type; 
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

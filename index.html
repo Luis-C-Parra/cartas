@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TELEFUNKEN – Mesa</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+<link href="mesa.css" rel="stylesheet"/>
+<link rel="icon" href="logo.png" type="image/png"/>
+</head>
+<body>
+<div id="splash"><img src="logo.png" class="splash-logo"/><h1>TELEFUNKEN</h1><h2>FAMILIAR</h2></div>
+<div id="girarAviso" onclick="this.style.display='none'">📱↻ Girá el celular a horizontal (tocá para ocultar)</div>
+
+<div id="mainContent" style="display:none;">
+  <header class="mesa-header">
+    <img src="logo.png" class="header-logo"/>
+    <div class="header-info">
+      <span id="usuarioDisplay" class="header-user"></span>
+      <span id="rondaDisplay" class="ronda-badge"></span>
+    </div>
+    <button onclick="logout()" class="btn-logout">Salir</button>
+  </header>
+
+  <div id="panelSetup" class="panel">
+    <h2>🎲 Nueva Partida</h2>
+    <div class="setup-form">
+      <label>Jugadores:</label>
+      <select id="numJugadores" onchange="crearInputs()">
+        <option value="">Seleccionar</option>
+        <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+        <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+      </select>
+      <div id="inputJugadores"></div>
+      <label>Empieza la ronda:</label>
+      <select id="starterSel"></select>
+      <button onclick="iniciarPartida()" class="btn-primary" id="btnIniciar">🃏 Repartir cartas</button>
+      <div id="setupMsg" class="msg-box" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="panelMesa" style="display:none;">
+    <div class="ronda-info-bar">
+      <div id="rondaNombre" class="ronda-nombre"></div>
+      <div id="turnoActual" class="turno-actual"></div>
+    </div>
+    <div class="wapp-bar"><div class="wapp-title">🏆 Puntajes acumulados</div><div id="puntajesList"></div></div>
+    <div class="wapp-bar"><div class="wapp-title">📤 Enviá el link a cada jugador:</div><div id="wappLinks"></div></div>
+
+    <div class="mesa-central">
+      <div class="zona-mazo">
+        <div class="mazo-pile" id="btnRobar" onclick="robarDelMazo()">
+          <div class="mazo-count" id="mazoCantidad">0</div>
+          <div class="mazo-label">📦 Mazo</div><div class="mazo-sub">Toca para robar</div>
+        </div>
+      </div>
+      <div class="zona-descarte">
+        <div class="descarte-label">🃏 Mesa</div>
+        <div id="cartaDescarte" class="descarte-slot"><span class="descarte-vacio">—</span></div>
+        <div class="descarte-sub" id="descarteSub"></div>
+      </div>
+    </div>
+
+    <div id="estadoJugadores" class="estado-jugadores"></div>
+    <div class="jugadas-mesa"><h3>🧾 Jugadas en la mesa</h3><div id="jugadasMesa"></div></div>
+    <div id="soparPanel" class="sopar-panel" style="display:none;">
+      <div class="wapp-title">🧹 SOPAR — opciones</div><div id="soparOpts"></div>
+    </div>
+
+    <div class="mi-mano-section">
+      <h3>🃏 Tu mano <span id="contadorMano" class="contador-mano"></span></h3>
+      <div class="mano-acciones">
+        <button onclick="ordenarMano()" class="btn-ordenar">🔃 Ordenar</button>
+      </div>
+      <div id="miMano" class="mi-mano"></div>
+      <div class="hint-tapa">👆 Tocá para seleccionar · ✊ Deslizá para acomodar · 💰 Tocá la carta de la mesa para COMPRAR<br>
+      ⚠️ La jugada se baja COMPLETA de una vez · 💰 Comprar: en cualquier momento, solo la carta recién tirada (si te quedan monedas) · 🧹 Sopar: desde tu siguiente turno después de bajar tu jugada</div>
+      <div class="acciones-juego">
+        <button onclick="bajarJugada()" class="btn-tapa" id="btnBajar" disabled>📥 BAJAR</button>
+        <button onclick="abrirSopar()" class="btn-primary" id="btnSopar" disabled>🧹 SOPAR</button>
+        <button onclick="tirarCarta()" class="btn-tirar" id="btnTirar" disabled>↩ Tirar a la mesa</button>
+        <button onclick="tapar()" class="btn-tapa" id="btnTapa" disabled>🟢 TAPA — Cerré la ronda</button>
+      </div>
+    </div>
+    <div id="logEventos" class="log-eventos"></div>
+  </div>
+</div>
+
+<button class="theme-toggle" id="themeToggle" title="Cambiar tema visual">🌙</button>
+<footer class="footer-copy">© 2026 TELEFUNKEN FAMILIAR · Lic. Luis C. Parra · Todos los derechos reservados</footer>
+<script type="module" src="juego.js"></script>
+</body>
+</html>
