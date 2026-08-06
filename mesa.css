@@ -198,10 +198,11 @@ body {
   border:1px solid rgba(0,0,0,.15);
   box-shadow:2px 2px 4px rgba(60,74,57,.25);
   position:relative;
-  touch-action:pan-y;
+  touch-action:none;
   -webkit-user-select:none;
   -webkit-touch-callout:none;
 }
+#miMano .carta.carta-arrastrando { transform:scale(1.08) translateY(-8px); box-shadow:0 10px 18px rgba(0,0,0,.35); z-index:5; }
 .carta:hover { transform:translateY(-6px); box-shadow:2px 8px 12px rgba(60,74,57,.3); }
 .carta-negra { background:white; color:#2b2b2b; }
 .carta-roja  { background:white; color:#c66060; }
@@ -209,13 +210,18 @@ body {
   background:linear-gradient(135deg,#a58fd0,#8e6fc0);
   color:#fff8e6; border:2px solid #e9c87e;
 }
-.cv-top { font-size:0.75rem; font-weight:900; line-height:1; }
-.cp     { font-size:1.3rem; text-align:center; line-height:1; }
-.cv-bot { font-size:0.75rem; font-weight:900; line-height:1;
-  transform:rotate(180deg); align-self:flex-end; }
-.carta-grande { width:80px; height:110px; }
-.carta-grande .cv-top { font-size:0.9rem; }
-.carta-grande .cp     { font-size:1.6rem; }
+/* Reemplazar estas reglas en mesa.css */
+.cv-top { font-size: 1.1rem; font-weight: 900; line-height: 1; }
+.cp     { font-size: 1.4rem; text-align: center; line-height: 1; }
+.cv-bot { font-size: 1.1rem; font-weight: 900; line-height: 1;
+  transform: rotate(180deg); align-self: flex-end; }
+
+.carta-grande .cv-top { font-size: 1.3rem; }
+.carta-grande .cp     { font-size: 1.8rem; }
+.carta-grande .cv-bot { font-size: 1.3rem; }
+
+.carta-mini .cv-top { font-size: 0.85rem; }
+.carta-mini .cp     { font-size: 1rem; }
 
 /* ── MI MANO ── */
 .mi-mano-section {
@@ -304,7 +310,8 @@ body {
 .bajada-grupo .carta-mini:first-child{margin-left:0;}
 .bajada-grupo + .bajada-grupo{margin-left:12px;}
 .carta-mini{width:40px;height:56px;padding:2px 3px;border-radius:6px;}
-.carta-mini .cv-top{font-size:.6rem;}
+.carta-mini .cv-top{font-size:.78rem;}
+.carta-mini .cv-bot{font-size:.78rem;}
 .carta-mini .cp{font-size:.85rem;}
 .sopar-panel { margin:0 12px 12px; padding:12px; background:rgba(233,200,126,.25);
   border:1px solid #c9a24b; border-radius:12px; }
@@ -349,7 +356,7 @@ body {
   .mesa-central { flex-direction:row; padding:14px; }
   .carta { width:54px; height:78px; }
   .carta-grande { width:70px; height:96px; }
-  .cv-top,.cv-bot { font-size:0.7rem; }
+  .cv-top,.cv-bot { font-size:0.95rem; }
   .cp { font-size:1.1rem; }
   .ronda-info-bar { flex-direction:column; gap:6px; text-align:center; }
 }
@@ -554,4 +561,139 @@ body.casino-mode .carta-sel::after{ background:#fbbf24; color:#052e16; }
 }
 .carta-sel.carta-joker {
   box-shadow:0 0 0 3px #ffd700, 0 14px 22px rgba(100,60,180,.45) !important;
+}
+
+/* ── HOST: BOTONES DE CONTROL ── */
+/* ── HOST: BOTONES DE CONTROL ── */
+.btn-host-apuro, .btn-host-saltear {
+  background: none; border: none; cursor: pointer;
+  font-size: 1rem; padding: 2px 4px; margin-left: 4px;
+  opacity: 0.7; transition: opacity 0.2s;
+}
+.btn-host-apuro:hover, .btn-host-saltear:hover { opacity: 1; transform: scale(1.2); }
+
+/* Botón de expulsar: más grande, con texto, separado y con confirmación visual */
+.btn-host-expulsar {
+  background: rgba(211, 47, 47, 0.15);
+  border: 1px solid rgba(211, 47, 47, 0.4);
+  color: #c62828;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  margin-left: 12px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-host-expulsar:hover {
+  background: rgba(211, 47, 47, 0.3);
+  border-color: #c62828;
+  transform: scale(1.05);
+}
+body.casino-mode .btn-host-expulsar {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #ef4444 !important;
+}
+body.casino-mode .btn-host-expulsar:hover {
+  background: rgba(239, 68, 68, 0.4) !important;
+}
+.jug-expulsado { opacity: 0.5; text-decoration: line-through; background: rgba(211,47,47,.1) !important; }
+
+/* ── BANNER DE APURO ── */
+.jug-apressado { animation: shake 0.5s ease-in-out; border-color: #ff9800 !important; }
+.banner-apuro {
+  position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+  background: #ff9800; color: white; padding: 4px 12px; border-radius: 20px;
+  font-size: 0.75rem; font-weight: 800; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(255,152,0,.4); z-index: 10;
+  animation: pulse-apuro 1s infinite;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+@keyframes pulse-apuro {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,152,0,.7); }
+  50% { box-shadow: 0 0 0 8px rgba(255,152,0,0); }
+}
+.jug-estado { position: relative; } /* Para que el banner se posicione bien */
+
+
+/* ── BOTÓN DE APURAR (cualquier jugador) ── */
+.btn-apurar {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.1rem; padding: 2px 6px; margin-left: 4px;
+  opacity: 0.6; transition: all 0.2s;
+}
+.btn-apurar:hover { 
+  opacity: 1; 
+  transform: scale(1.3); 
+  filter: drop-shadow(0 0 4px rgba(255,152,0,0.6));
+}
+
+/* ── BANNER DE APURO (cuando te apuran) ── */
+.jug-apressado { 
+  animation: shake 0.5s ease-in-out; 
+  border-color: #ff9800 !important; 
+  background: rgba(255,152,0,0.1) !important;
+}
+.banner-apuro {
+  position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white; padding: 6px 14px; border-radius: 20px;
+  font-size: 0.8rem; font-weight: 800; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(255,152,0,0.5); z-index: 10;
+  animation: pulse-apuro 1s infinite;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+@keyframes pulse-apuro {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,152,0,0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255,152,0,0); }
+}
+.jug-estado { position: relative; }
+
+/* ── BANNER GRANDE DE "ES TU TURNO" ── */
+.mi-turno-banner-grande {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000; padding: 20px; border-radius: 16px; text-align: center;
+  margin: 12px; box-shadow: 0 8px 24px rgba(255,215,0,0.4);
+  animation: pulse-turno 2s infinite;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.turno-icono { font-size: 2.5rem; animation: bounce 1s infinite; }
+.turno-texto { 
+  font-size: 1.8rem; font-weight: 900; letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.turno-subtexto { font-size: 1rem; font-weight: 600; opacity: 0.9; }
+
+@keyframes pulse-turno {
+  0%, 100% { 
+    box-shadow: 0 8px 24px rgba(255,215,0,0.4);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 12px 32px rgba(255,215,0,0.6);
+    transform: scale(1.02);
+  }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Modo casino: ajustar colores del banner de turno */
+body.casino-mode .mi-turno-banner-grande {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  color: #052e16;
+}
+body.casino-mode .btn-apurar:hover {
+  filter: drop-shadow(0 0 4px rgba(251,191,36,0.8));
 }

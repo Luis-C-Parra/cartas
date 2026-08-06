@@ -73,7 +73,7 @@ function describirSeleccion(cartas,ronda,yaAbrio){
  if(!cartas.length)return '📥 BAJAR';
  if(!yaAbrio){
   /* Todavía debe la jugada de apertura completa */
-  const req=ronda.cant*ronda.tam;
+  const req=ronda.cant * ronda.tam;
   if(cartas.length!==req)return `📥 BAJAR ${cartas.length}/${req} cartas (apertura: ${nombreJugada(ronda.tipo,ronda.cant)})`;
   let ok=false;
   if(ronda.tipo==='escalera')ok=grupoValido(cartas,ronda);
@@ -105,12 +105,62 @@ function asegurarMazo(s){
  s.pozo=[];
 }
 
-function grupoValido(cartas,r){if(cartas.length!==r.tam)return false;const re=cartas.filter(c=>!c.joker);if(!re.length)return false;
- if(r.tipo==='escalera'){const p=re[0].p;if(!re.every(c=>c.p===p))return false;
-  const v=re.map(c=>ORDEN[c.v]).sort((a,b)=>a-b);if(new Set(v).size!==v.length)return false;
-  for(let s=Math.max(1,v[v.length-1]-r.tam+1);s<=Math.min(13-r.tam+1,v[0]);s++)if(v.every(x=>x>=s&&x<=s+r.tam-1))return true;
-  return false;}
- return re.every(c=>c.v===re[0].v);}
+/* Máximo de jokers permitidos según el largo de la escalera: 3 cartas → 1 joker,
+   4 cartas → 2 jokers, 5 cartas en adelante → hasta 3 jokers. */
+function maxJokersEscalera(tam){if(tam<=3)return 1;if(tam===4)return 2;return 3;}
+
+/* Para un inicio de rango "s" dado, los jokers ocupan exactamente los valores que
+   faltan entre s y s+tam-1 (los que no cubre ninguna carta real). Esta función
+   verifica que esa cantidad no supere el máximo permitido y que nunca haya dos
+   valores faltantes consecutivos (= dos jokers pegados uno al lado del otro). */
+function jokersOkEnRango(s,tam,valoresReales,numJokers){
+ if(numJokers>maxJokersEscalera(tam))return false;
+ const faltan=[];for(let x=s;x<s+tam;x++)if(!valoresReales.includes(x))faltan.push(x);
+ if(faltan.length!==numJokers)return false;
+ for(let i=1;i<faltan.length;i++)if(faltan[i]===faltan[i-1]+1)return false;
+ return true;}
+
+// En juego.js, reemplazar la validación de escalera en grupoValido:
+function grupoValido(cartas, r) {
+  if (cartas.length !== r.tam) return false;
+  const re = cartas.filter(c => !c.joker);
+  if (!re.length) return false;
+  
+  if (r.tipo === 'escalera') {
+    const p = re[0].p;
+    if (!re.every(c => c.p === p)) return false;
+    
+    const v = re.map(c => ORDEN[c.v]).sort((a, b) => a - b);
+    if (new Set(v).size !== v.length) return false;
+    
+    // Validar jokers
+    const numJokers = cartas.length - re.length;
+    const maxJokers = r.tam <= 3 ? 1 : r.tam <= 4 ? 2 : 3;
+    if (numJokers > maxJokers) return false;
+    
+    // Verificar que no haya jokers consecutivos
+    for (let s = Math.max(1, v[v.length - 1] - r.tam + 1); s <= Math.min(13 - r.tam + 1, v[0]); s++) {
+      if (v.every(x => x >= s && x <= s + r.tam - 1)) {
+        // Verificar adyacencia de jokers
+        const posicionesJoker = [];
+        for (let i = s; i < s + r.tam; i++) {
+          if (!v.includes(i)) posicionesJoker.push(i);
+        }
+        let consecutivos = false;
+        for (let i = 1; i < posicionesJoker.length; i++) {
+          if (posicionesJoker[i] === posicionesJoker[i-1] + 1) {
+            consecutivos = true;
+            break;
+          }
+        }
+        if (!consecutivos) return true;
+      }
+    }
+    return false;
+  }
+  
+  return re.every(c => c.v === re[0].v);
+}
 
 function particionarGrupos(cartas,r){
  const jk=cartas.filter(c=>c.joker),re=cartas.filter(c=>!c.joker),por={};
@@ -124,8 +174,10 @@ function particionarGrupos(cartas,r){
  if(grupos.length!==r.cant)return null;
  return grupos;}
 
-function asignarVals(cartas){const tam=cartas.length,re=cartas.filter(c=>!c.joker);const v=re.map(c=>ORDEN[c.v]).sort((a,b)=>a-b);let s=null;
- for(let st=Math.max(1,v[v.length-1]-tam+1);st<=Math.min(13-tam+1,v[0]);st++)if(v.every(x=>x>=st&&x<=st+tam-1)){s=st;break;}
+function asignarVals(cartas){const tam=cartas.length,re=cartas.filter(c=>!c.joker);const v=re.map(c=>ORDEN[c.v]).sort((a,b)=>a-b);
+ const numJokers=cartas.length-re.length;let s=null;
+ for(let st=Math.max(1,v[v.length-1]-tam+1);st<=Math.min(13-tam+1,v[0]);st++)
+  if(v.every(x=>x>=st&&x<=st+tam-1)&&jokersOkEnRango(st,tam,v,numJokers)){s=st;break;}
  const falt=[];for(let x=s;x<s+tam;x++)if(!v.includes(x))falt.push(x);let fi=0;
  /* Ordenado por valor ascendente: el array se guarda en el orden en que el jugador
     seleccionó las cartas en su mano, que no tiene por qué coincidir con el orden de la
@@ -206,8 +258,16 @@ function opcionesSopar(e){const opts=[],mano=e.manos?.[miNombre]||[];
      if(hi!==-1)opts.push({tipo:'adjEsc',jugador:n,gi,hi,lado,val:v,
       desc:`🧹 ${n}: sopar tu ${VALORES[v-1]}${palo} al ${donde} de su escalera`});
      const hj=mano.findIndex(c=>c.joker);
-     if(hj!==-1)opts.push({tipo:'adjEsc',jugador:n,gi,hi:hj,lado,val:v,
-      desc:`🧹 ${n}: sopar tu 🃏 al ${donde} de su escalera (vale ${VALORES[v-1]})`});
+     if(hj!==-1){
+      /* Estirar con un joker propio: no se ofrece si el extremo de ese lado ya es un
+         joker (quedarían dos jokers pegados) ni si se supera el máximo permitido para
+         el nuevo largo de la escalera. */
+      const bordeEsJoker=side===0?g[0]?.joker:g[g.length-1]?.joker;
+      const jokersActuales=g.filter(c=>c.joker).length;
+      const okNuevo=!bordeEsJoker&&(jokersActuales+1)<=maxJokersEscalera(g.length+1);
+      if(okNuevo)opts.push({tipo:'adjEsc',jugador:n,gi,hi:hj,lado,val:v,
+       desc:`🧹 ${n}: sopar tu 🃏 al ${donde} de su escalera (vale ${VALORES[v-1]})`});
+     }
     });
    }else{
     const V=g.filter(c=>!c.joker)[0]?.v;
@@ -289,20 +349,58 @@ function renderMesa(e){
   txt('objRonda',getObjetivo(e.ronda));
   txt('mazoCantidad',e.mazo?.length||0);txt('mazoCant',e.mazo?.length||0);
   const jug=e.jugadores[e.turnoIdx],mio=jug===miNombre;
-  htm('turnoActual',`Turno: <strong>${jug}</strong>${mio?' <span class="mi-turno-tag">← vos</span>':''}`);
-  htm('turnoBar',mio?`<div class="mi-turno-banner">🎯 ¡ES TU TURNO!</div>`
-   :`<div class="esperando-banner">⏳ Turno de <strong>${jug}</strong></div>`);
+htm('turnoActual',`Turno: <strong>${jug}</strong>${mio?' <span class="mi-turno-tag">← vos</span>':''}`);
+
+// Banner GRANDE de turno (muy visible)
+if(mio){
+  htm('turnoBar',`
+    <div class="mi-turno-banner-grande">
+      <div class="turno-icono">🎯</div>
+      <div class="turno-texto">¡ES TU TURNO!</div>
+      <div class="turno-subtexto">Te toca jugar</div>
+    </div>
+  `);
+} else {
+  htm('turnoBar',`<div class="esperando-banner">⏳ Turno de <strong>${jug}</strong></div>`);
+}
   const ptsHtml=e.jugadores.map(n=>`<div class="wapp-row">
    <span class="wapp-n ${n===miNombre?'yo':''}">${n===miNombre?'👤 ':''}${n}</span>
    <span class="pts-valor">${e.puntajes?.[n]||0} pts</span></div>`).join('');
   htm('puntajesList',ptsHtml);
-  const estHtml=e.jugadores.map(n=>{const hab=e.compraHabilitada?.[n];
-   return `<div class="jug-estado ${n===jug?'jug-activo':''}">
-   <span class="jug-n">${n===miNombre?'👤 ':''}${n}</span>
-   <span class="jug-c">🃏${e.manos?.[n]?.length||0}</span>
-   <span class="monedas-tag">🪙${e.monedas?.[n]??7}</span>
-   ${tieneJugada(e,n)?`<span class="tapó-tag">📥${hab?'✓':'⏳'}</span>`:''}</div>`;}).join('');
-  htm('estadoJugadores',estHtml);htm('estadoJugs',estHtml);
+   const esHost = (miNombre === e.host);
+const estHtml=e.jugadores.map(n=>{
+  const hab=e.compraHabilitada?.[n];
+  const apressado = e.apressado?.[n];
+  const hacePoco = apressado && (Date.now() - apressado < 5000);
+  const expulsado = e.expulsados?.[n];
+  
+  // Botón de apurar: cualquiera puede apurar a cualquier otro
+  let botonApurar = '';
+  if(n !== miNombre && !expulsado){
+    botonApurar = `<button onclick="apressarJugador('${n}')" class="btn-apurar" title="Apurar a ${n}">⏰</button>`;
+  }
+  
+  // Botones de host (solo el host los ve)
+  let botonesHost = '';
+  if(esHost && n !== miNombre && !expulsado){
+    botonesHost = `<button onclick="expulsarJugador('${n}')" class="btn-host-expulsar" title="Expulsar a ${n} de la partida">🚫 Expulsar</button>`;
+    if(n === jug){
+      botonesHost += `<button onclick="saltearTurno()" class="btn-host-saltear" title="Saltear turno">⏭️</button>`;
+    }
+  }
+  
+  return `<div class="jug-estado ${n===jug?'jug-activo':''} ${expulsado?'jug-expulsado':''} ${hacePoco&&n===miNombre?'jug-apressado':''}">
+    <span class="jug-n">${n===miNombre?'👤 ':''}${n}${expulsado?' (expulsado)':''}</span>
+    <span class="jug-c">🃏${e.manos?.[n]?.length||0}</span>
+    <span class="monedas-tag">🪙${e.monedas?.[n]??7}</span>
+    ${tieneJugada(e,n)?`<span class="tapó-tag">📥${hab?'✓':'⏳'}</span>`:''}
+    ${botonApurar}
+    ${botonesHost}
+    ${hacePoco && n===miNombre ? '<div class="banner-apuro">⏰ ¡TE ESTÁN APURANDO!</div>' : ''}
+  </div>`;
+}).join('');
+  htm('estadoJugadores', estHtml);
+  htm('estadoJugs', estHtml);
   const ds=$('cartaDescarte')||$('cartaMesa');
   if(ds){
     if(e.mesa){ds.innerHTML=htmlCarta(e.mesa,true);
@@ -410,8 +508,9 @@ function pintaMano(arr,dragIdx){
   const el=$('miMano');if(!el)return;
   el.innerHTML=arr.map((c,i)=>{
    const sel=selSet.has(i)||i===dragIdx;
+   const arrastrando=drag&&drag.moved&&i===dragIdx;
    const palo=c.joker?'carta-joker':c.p==='♥'||c.p==='♦'?'carta-roja':'carta-negra';
-   return `<div class="carta ${palo} ${sel?'carta-sel':''}" onpointerdown="iniciarDrag(event,${i})">
+   return `<div class="carta ${palo} ${sel?'carta-sel':''} ${arrastrando?'carta-arrastrando':''}" onpointerdown="iniciarDrag(event,${i})">
     <div class="cv-top">${c.v}</div><div class="cp">${c.p}</div><div class="cv-bot">${c.v}</div></div>`;
   }).join('');}
 
@@ -422,7 +521,7 @@ window.iniciarDrag=function(ev,i){
 document.addEventListener('pointermove',ev=>{
   if(!drag)return;
   const dx=ev.clientX-drag.sx,dy=ev.clientY-drag.sy;
-  if(!drag.moved&&Math.abs(dx)>20&&Math.abs(dx)>Math.abs(dy)*1.2)drag.moved=true;
+  if(!drag.moved&&(Math.abs(dx)>8||Math.abs(dy)>8))drag.moved=true;
   if(!drag.moved)return;
   ev.preventDefault();
   const els=[...document.querySelectorAll('#miMano .carta')];
@@ -478,6 +577,8 @@ window.robarDelMazo=async function(){if(!estadoLocal)return;const e=estadoLocal;
  if(e.robos>0)return log('Ya robaste. Tirá una carta.');
  const r=await runTransaction(ref(db,`partidas/${gameId}`),s=>{
   if(!s)return;
+  // Dentro de runTransaction de robarDelMazo, después de if(!s)return;
+if (s.expulsados?.[miNombre]) return; // jugador expulsado no puede jugar
   if(s.jugadores[s.turnoIdx]!==miNombre)return;
   if(s.robos>0)return;
   asegurarMazo(s); /* si no hay cartas, rebaraja el pozo de descarte y sigue */
@@ -517,6 +618,10 @@ window.comprarMesa=async function(){if(!estadoLocal)return;const e=estadoLocal;
 
 window.tirarCarta=async function(){if(!estadoLocal||selSet.size!==1)return;const e=estadoLocal;
  if(e.jugadores[e.turnoIdx]!==miNombre)return log('No es tu turno');
+ 
+ // Al inicio de tirarCarta, después de verificar turno
+if (e.expulsados?.[miNombre]) return log('Estás expulsado, no podés jugar.');
+
  if(e.robos===0)return log('Primero robá del mazo o comprá');
  const manoActual=e.manos?.[miNombre]||[];
  if(manoActual.length<=1){
@@ -581,63 +686,84 @@ window.abrirSopar=function(){if(!estadoLocal||!estadoLocal.compraHabilitada?.[mi
  htm('soparOpts',opts.map((o,i)=>`<button class="sopar-btn" onclick="ejecutarSopar(${i})">${o.desc}</button>`).join(''));
  const sp=$('soparPanel');if(sp)sp.style.display='block';};
 
-window.ejecutarSopar=async function(i){const o=window._soparOpts?.[i];if(!o)return;
- await runTransaction(ref(db,`partidas/${gameId}`),s=>{
-  if(!s)return;
-  const g=s.bajadas?.[o.jugador]?.[o.gi];if(!g)return;
-  const mm=s.manos[miNombre],mia=mm?.[o.hi];if(!mia)return;
-  if(o.tipo==='grupo'){
-   const jI=g.findIndex(c=>c.joker);if(jI===-1)return;
-   const jk=g[jI];g[jI]={...mia,dueno:miNombre};mm.splice(o.hi,1);mm.push({...jk});
+window.ejecutarSopar=async function(i){
+  const o=window._soparOpts?.[i];
+  if(!o)return;
+  
+  const res = await runTransaction(ref(db,`partidas/${gameId}`),s=>{
+    if(!s)return;
+    const g=s.bajadas?.[o.jugador]?.[o.gi];
+    if(!g)return;
+    const mm=s.manos[miNombre],mia=mm?.[o.hi];
+    if(!mia)return;
+    
+    if(o.tipo==='grupo'){
+      const jI=g.findIndex(c=>c.joker);
+      if(jI===-1)return;
+      const jk=g[jI];
+      g[jI]={...mia,dueno:miNombre};
+      mm.splice(o.hi,1);
+      mm.push({...jk});
+    }
+    else if(o.tipo==='escalera'){
+      const jIdx=o.jIdx,jk=g[jIdx];
+      if(jk==null||!jk.joker)return;
+      const vals=g.map(c=>c.val),s0=Math.min(...vals),top0=Math.max(...vals);
+      const nv=o.lado==='der'?top0+1:s0-1;
+      if(nv<1||nv>13)return;
+      g[jIdx]={...mia,dueno:miNombre,val:jk.val};
+      const jokerCorrido={...jk,val:nv};
+      if(o.lado==='der')g.push(jokerCorrido);
+      else g.unshift(jokerCorrido);
+      g.sort((a,b)=>a.val-b.val);
+      mm.splice(o.hi,1);
+    }
+    else if(o.tipo==='adj'){
+      g.push({...mia,dueno:miNombre});
+      mm.splice(o.hi,1);
+    }
+    else if(o.tipo==='adjEsc'){
+      const nueva={...mia,dueno:miNombre,val:o.val};
+      if(o.lado==='izq')g.unshift(nueva);
+      else g.push(nueva);
+      g.sort((a,b)=>a.val-b.val);
+      mm.splice(o.hi,1);
+    }
+    else if(o.tipo==='escaleraPartir'){
+      const jIdx=o.jIdx,jk=g[jIdx];
+      if(jk==null||!jk.joker)return;
+      const paloEsc=g.find(c=>!c.joker)?.p;
+      if(!mia.joker&&(mia.p!==paloEsc||ORDEN[mia.v]!==jk.val))return;
+      const grupoIzq=g.slice(0,jIdx);
+      const grupoDer=[{...mia,dueno:miNombre,val:jk.val},...g.slice(jIdx+1)];
+      if(grupoIzq.length<3||grupoDer.length<3)return;
+      s.bajadas[o.jugador].splice(o.gi,1,grupoIzq,grupoDer);
+      mm.splice(o.hi,1);
+    }
+    return s;
+  });
+  
+  if(res.committed){
+    log(`🧹 ${miNombre} sopó a ${o.jugador}`);
+    
+    // ✅ Usar el snapshot FRESCO del servidor (no el estadoLocal cacheado)
+    const estadoFresco = res.snapshot.val();
+    const nuevasOpts = opcionesSopar(estadoFresco);
+    
+    if(!nuevasOpts.length){
+      const sp=$('soparPanel');
+      if(sp)sp.style.display='none';
+      window._soparOpts=[];
+      return;
+    }
+    
+    window._soparOpts=nuevasOpts;
+    htm('soparOpts',nuevasOpts.map((opt,idx)=>
+      `<button class="sopar-btn" onclick="ejecutarSopar(${idx})">${opt.desc}</button>`
+    ).join(''));
   }
-  else if(o.tipo==='escalera'){
-   const jIdx=o.jIdx,jk=g[jIdx];
-   if(jk==null||!jk.joker)return; /* el joker esperado ya no está donde se calculó la opción */
-   /* El joker NUNCA se saca del juego: tu carta real ocupa su lugar y el joker se desliza
-      al extremo correspondiente, HACIENDO CRECER la escalera en 1 carta (no se expulsa la
-      otra punta). El cálculo usa el tamaño real del grupo, así que sirve igual para
-      escaleras de 3, 4, 5, 6 o 7 cartas. */
-   const vals=g.map(c=>c.val),s0=Math.min(...vals),top0=Math.max(...vals);
-   const nv=o.lado==='der'?top0+1:s0-1;
-   if(nv<1||nv>13)return;
-   g[jIdx]={...mia,dueno:miNombre,val:jk.val};
-   const jokerCorrido={...jk,val:nv};
-   if(o.lado==='der')g.push(jokerCorrido);else g.unshift(jokerCorrido);
-   g.sort((a,b)=>a.val-b.val); /* por las dudas, asegura el orden visual 6,7,8...Q,K */
-   mm.splice(o.hi,1);
-  }
-  else if(o.tipo==='adj'){
-   g.push({...mia,dueno:miNombre});mm.splice(o.hi,1);
-  }
-  else if(o.tipo==='adjEsc'){
-   /* Estirar una escalera con una carta adyacente (real o joker), al inicio o al final.
-      Ej: escalera 2-8♣ ya bajada → soparle el A♣ (val 1) "al inicio" la convierte en A-8♣.
-      Antes este caso no tenía handler acá y la acción no hacía nada aunque el log dijera
-      que sí. Se inserta ordenado (unshift/push) para que la jugada se vea prolija. */
-   const nueva={...mia,dueno:miNombre,val:o.val};
-   if(o.lado==='izq')g.unshift(nueva);else g.push(nueva);
-   g.sort((a,b)=>a.val-b.val); /* por las dudas, asegura el orden visual */
-   mm.splice(o.hi,1);
-  }
-  else if(o.tipo==='escaleraPartir'){
-   /* Partir la escalera en dos grupos independientes en el hueco del joker, en vez de
-      correrlo a una punta. Hace falta cuando la escalera ya ocupa todo el rango posible
-      (ej. A a K completa) y no hay punta libre a la que correr el joker — pero también
-      sirve como alternativa aunque sí hubiera punta libre. Se revalida todo server-side
-      contra el estado real (no lo que calculó el cliente), por si la mesa cambió entre
-      que se abrió el panel de sopar y que se tocó el botón. */
-   const jIdx=o.jIdx,jk=g[jIdx];
-   if(jk==null||!jk.joker)return; /* el joker esperado ya no está ahí */
-   const paloEsc=g.find(c=>!c.joker)?.p;
-   if(!mia.joker&&(mia.p!==paloEsc||ORDEN[mia.v]!==jk.val))return; /* la carta no matchea */
-   const grupoIzq=g.slice(0,jIdx);
-   const grupoDer=[{...mia,dueno:miNombre,val:jk.val},...g.slice(jIdx+1)];
-   if(grupoIzq.length<3||grupoDer.length<3)return; /* alguno quedaría inválido */
-   s.bajadas[o.jugador].splice(o.gi,1,grupoIzq,grupoDer); /* 1 grupo → 2 grupos */
-   mm.splice(o.hi,1);
-  }
-  return s;});
- log(`🧹 ${miNombre} sopó a ${o.jugador}`);};
+};
+
 
 window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
  if(e.jugadores[e.turnoIdx]!==miNombre)return log('No es tu turno');
@@ -671,7 +797,10 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
    const puntajes={...(s.puntajes||{})};
    s.jugadores.forEach(n=>puntajes[n]=(puntajes[n]||0)+pts[n]);
    const nr=s.ronda+1,fin=nr>=RONDAS.length;
-   const ns=fin?s.starterIdx:(s.starterIdx+1)%s.jugadores.length;
+   /* El que TAPA (gana) la ronda es quien arranca la próxima — no simplemente "el
+      siguiente en orden de turno". */
+   const idxTapador=s.jugadores.indexOf(miNombre);
+   const ns=fin?s.starterIdx:(idxTapador>=0?idxTapador:s.starterIdx);
    s.manos=manos;
    s.puntajes=puntajes;
    s.fase='esperando_aceptacion';
@@ -685,7 +814,7 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
     fin,
     ganador:fin?s.jugadores.reduce((a,b)=>puntajes[a]<puntajes[b]?a:b):null,
     siguiente:fin?null:RONDAS[nr].nombre,
-    empiezaProx:fin?null:s.jugadores[ns],
+    empiezaProx:fin?null:miNombre,
     aceptaron:{}
    };
    return s;
@@ -730,7 +859,9 @@ window.aceptarRonda=async function(){if(!estadoLocal)return;
    }
    /* Todos aceptaron: avanzar de ronda. Usamos SIEMPRE s.ronda (nunca resumenRonda.rondaNum) */
    const nr=(s.ronda||0)+1, fin=nr>=RONDAS.length;
-   const ns=fin?s.starterIdx:((s.starterIdx||0)+1)%s.jugadores.length;
+   /* El que TAPÓ la ronda (guardado en el resumen) es quien arranca la próxima ronda. */
+   const idxTapador=(s.jugadores||[]).indexOf(r.tapador);
+   const ns = fin ? s.starterIdx : s.jugadores.indexOf(r.tapador);
    /* Las monedas son de TODA la partida, no se resetean al pasar de ronda: se conservan
       las que le quedaban a cada jugador (7 sólo la primera vez, por si faltara alguna). */
    const bajadas={},compraH={},monedas={...(s.monedas||{})};
@@ -761,7 +892,88 @@ window.aceptarRonda=async function(){if(!estadoLocal)return;
   alert('❌ Hubo un error al pasar a la siguiente ronda. Mirá el log de eventos para más info.');
  }};
 
+
+ /* ═══════════ APRESSAR JUGADOR (cualquiera puede) ═══════════ */
+window.apressarJugador = async function(nombre) {
+  if (!estadoLocal) return;
+  await update(ref(db, `partidas/${gameId}/apressado`), { [nombre]: Date.now() });
+  log(`⏰ ${miNombre} apuró a ${nombre}`);
+};
+
+/* ═══════════ HOST: SALTEAR / EXPULSAR ═══════════ */
+window.saltearTurno = async function() {
+  if (!estadoLocal) return;
+  const e = estadoLocal;
+  const jugActual = e.jugadores[e.turnoIdx];
+  const next = (e.turnoIdx + 1) % e.jugadores.length;
+  await update(ref(db, `partidas/${gameId}`), { turnoIdx: next, robos: 0 });
+  log(`⏭️ ${miNombre} salteó el turno de ${jugActual}`);
+};
+
+window.expulsarJugador = async function(nombre) {
+  if (!confirm(`¿Expulsar a ${nombre}? Sus jugadas bajadas quedan en la mesa.`)) return;
+  await runTransaction(ref(db, `partidas/${gameId}`), s => {
+    if (!s) return;
+    const idx = s.jugadores.indexOf(nombre);
+    if (idx === -1) return;
+    if (!s.expulsados) s.expulsados = {};
+    s.expulsados[nombre] = true;
+    if (s.jugadores[s.turnoIdx] === nombre) {
+      s.turnoIdx = (s.turnoIdx + 1) % s.jugadores.length;
+      s.robos = 0;
+    }
+    return s;
+  });
+  log(`🚫 ${miNombre} expulsó a ${nombre}`);
+};
+
+ /* ═══════════ APRESSAR JUGADOR (cualquiera puede) ═══════════ */
+window.apressarJugador = async function(nombre) {
+  if (!estadoLocal) return;
+  await update(ref(db, `partidas/${gameId}/apressado`), { [nombre]: Date.now() });
+  log(`⏰ ${miNombre} apuró a ${nombre}`);
+};
+
 /* ═══════════ SOLO HOST: SETUP Y LINKS ═══════════ */
+/* ═══════════ HOST: APRESSAR / SALTEAR / EXPULSAR ═══════════ */
+window.apressarJugador = async function(nombre) {
+  if (!estadoLocal) return;
+  await update(ref(db, `partidas/${gameId}/apressado`), { [nombre]: Date.now() });
+  log(`⏰ ${miNombre} apuró a ${nombre}`);
+};
+
+window.saltearTurno = async function() {
+  if (!estadoLocal) return;
+  const e = estadoLocal;
+  const jugActual = e.jugadores[e.turnoIdx];
+  let next = (e.turnoIdx + 1) % e.jugadores.length;
+while (e.expulsados?.[e.jugadores[next]] && next !== e.turnoIdx) {
+  next = (next + 1) % e.jugadores.length;
+}
+  await update(ref(db, `partidas/${gameId}`), { turnoIdx: next, robos: 0 });
+  log(`⏭️ ${miNombre} salteó el turno de ${jugActual}`);
+};
+
+window.expulsarJugador = async function(nombre) {
+  if (!confirm(`¿Expulsar a ${nombre}? Sus jugadas bajadas quedan en la mesa.`)) return;
+  await runTransaction(ref(db, `partidas/${gameId}`), s => {
+    if (!s) return;
+    const idx = s.jugadores.indexOf(nombre);
+    if (idx === -1) return;
+    // Marcar como expulsado (no borramos del array para mantener índices)
+    if (!s.expulsados) s.expulsados = {};
+    s.expulsados[nombre] = true;
+    // Si era su turno, avanzar al siguiente
+    if (s.jugadores[s.turnoIdx] === nombre) {
+      s.turnoIdx = (s.turnoIdx + 1) % s.jugadores.length;
+      s.robos = 0;
+    }
+    return s;
+  });
+  log(`🚫 ${miNombre} expulsó a ${nombre}`);
+};
+
+
 window.crearInputs=function(){const num=parseInt($('numJugadores')?.value)||0;
  const c=$('inputJugadores');if(!c)return;
  c.innerHTML=`<div class="input-row"><span class="yo-tag">👤 ${miNombre} (vos — host)</span></div>`;
