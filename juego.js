@@ -34,6 +34,14 @@ const ES_JUGADOR = !!(params.get('game') && params.get('player'));
 let gameId = ES_JUGADOR ? params.get('game') : null;
 let miNombre = ES_JUGADOR ? (params.get('player')||'').trim().toUpperCase() : null;
 let estadoLocal = null, selSet = new Set(), drag = null;
+/* Si el HOST vuelve a armar partida desde la pantalla de fin de juego, reusamos el
+   MISMO gameId (así los links de WhatsApp que ya mandó siguen sirviendo) en vez de
+   generar uno nuevo. Se activa con nuevaPartida() y se consume en iniciarPartida(). */
+let reusarGameId = false;
+/* Si el jugador (no-host) tocó "Salir" en la pantalla de fin de juego, dejamos de
+   mostrarle la mesa y le mostramos una despedida — es sólo un estado LOCAL, no borra
+   nada del servidor, así que el mismo link le sirve para la próxima partida. */
+let meFui = false;
 
 /* ── Utilidades DOM (si el elemento no existe, no hace nada) ── */
 const $ = id => document.getElementById(id);
@@ -52,14 +60,32 @@ function nombreGrupoPorTam(tam){const map={3:'trica',4:'cuarta',5:'quina'};retur
    trica, una cuarta, una quina, o varias juntas, mientras cada grupo tenga 3+ cartas del
    mismo número (jokers valen por cualquiera). */
 function particionarLibreValor(cartas){
- const jk=cartas.filter(c=>c.joker),re=cartas.filter(c=>!c.joker);
+ const jk=[...cartas.filter(c=>c.joker)],re=cartas.filter(c=>!c.joker);
  if(!re.length)return null;
  const por={};re.forEach(c=>{(por[c.v]=por[c.v]||[]).push(c);});
  const grupos=Object.values(por).map(g=>[...g]);
- let jokersLeft=[...jk];
- for(const g of grupos){while(g.length<3&&jokersLeft.length)g.push(jokersLeft.pop());}
- if(grupos.some(g=>g.length<3))return null;
- if(jokersLeft.length){if(!grupos.length)return null;grupos[0].push(...jokersLeft);}
+ /* 1) Cada grupo llega al mínimo de 3 cartas, respetando el máximo de jokers según
+    el tamaño final que va a tener (3→1 joker, 4+→2 jokers). */
+ for(const g of grupos){
+  while(g.length<3){
+   const jUsados=g.filter(c=>c.joker).length;
+   if(!jk.length||jUsados>=maxJokersValor(Math.max(3,g.length+1)))return null;
+   g.push(jk.pop());
+  }
+ }
+ /* 2) Jokers sobrantes: se reparten entre los grupos que todavía admitan más (hasta
+    su máximo), haciéndolos crecer a cuarta/quina. Si sobra algún joker que no entra
+    en ningún grupo sin pasarse del máximo, la selección no es válida. */
+ let cambiado=true;
+ while(jk.length&&cambiado){
+  cambiado=false;
+  for(const g of grupos){
+   if(!jk.length)break;
+   const jUsados=g.filter(c=>c.joker).length;
+   if(jUsados<maxJokersValor(g.length+1)){g.push(jk.pop());cambiado=true;}
+  }
+ }
+ if(jk.length)return null;
  return grupos;
 }
 
@@ -69,7 +95,7 @@ function describirGruposLibres(grupos){
 }
 
 /* Analiza lo que el jugador tiene marcado y devuelve un texto para el botón BAJAR */
-function describirSeleccion(cartas,ronda,yaAbrio){
+function describirSeleccion(cartas,ronda,yaAbrio,puedeLibre){
  if(!cartas.length)return '📥 BAJAR';
  if(!yaAbrio){
   /* Todavía debe la jugada de apertura completa */
@@ -80,7 +106,11 @@ function describirSeleccion(cartas,ronda,yaAbrio){
   else ok=!!particionarGrupos(cartas,ronda);
   return ok?`📥 BAJAR ${nombreJugada(ronda.tipo,ronda.cant)} (apertura)`:`📥 BAJAR ${cartas.length}/${req} (jugada inválida)`;
  }
- /* Ya abrió: puede bajar CUALQUIER combinación válida (trica, cuarta, quina... o una escalera de 3+),
+ /* Ya abrió, pero si fue recién EN ESTE turno todavía no puede bajar nada más: las
+    jugadas sueltas se habilitan desde su SIGUIENTE turno (mismo momento en que se
+    habilita el sopar). */
+ if(!puedeLibre)return '📥 Ya abriste — jugadas sueltas desde tu próximo turno';
+ /* Puede bajar CUALQUIER combinación válida (trica, cuarta, quina... o una escalera de 3+),
     sin depender del tipo/tamaño de esta ronda */
  if(cartas.length>=3&&grupoValido(cartas,{tipo:'escalera',tam:cartas.length}))return `📥 BAJAR 1 escalera de ${cartas.length}`;
  const grupos=particionarLibreValor(cartas);
@@ -109,6 +139,10 @@ function asegurarMazo(s){
    4 cartas → 2 jokers, 5 cartas en adelante → hasta 3 jokers. */
 function maxJokersEscalera(tam){if(tam<=3)return 1;if(tam===4)return 2;return 3;}
 
+/* Máximo de jokers en una jugada de VALOR (trica/cuarta/quina, mismo número):
+   una trica (3 cartas) admite 1 joker; de cuarta (4) para arriba, hasta 2 jokers. */
+function maxJokersValor(tam){return tam<=3?1:2;}
+
 /* Para un inicio de rango "s" dado, los jokers ocupan exactamente los valores que
    faltan entre s y s+tam-1 (los que no cubre ninguna carta real). Esta función
    verifica que esa cantidad no supere el máximo permitido y que nunca haya dos
@@ -120,46 +154,26 @@ function jokersOkEnRango(s,tam,valoresReales,numJokers){
  for(let i=1;i<faltan.length;i++)if(faltan[i]===faltan[i-1]+1)return false;
  return true;}
 
-// En juego.js, reemplazar la validación de escalera en grupoValido:
 function grupoValido(cartas, r) {
   if (cartas.length !== r.tam) return false;
   const re = cartas.filter(c => !c.joker);
   if (!re.length) return false;
-  
+
   if (r.tipo === 'escalera') {
     const p = re[0].p;
     if (!re.every(c => c.p === p)) return false;
-    
+
     const v = re.map(c => ORDEN[c.v]).sort((a, b) => a - b);
     if (new Set(v).size !== v.length) return false;
-    
-    // Validar jokers
+
     const numJokers = cartas.length - re.length;
-    const maxJokers = r.tam <= 3 ? 1 : r.tam <= 4 ? 2 : 3;
-    if (numJokers > maxJokers) return false;
-    
-    // Verificar que no haya jokers consecutivos
     for (let s = Math.max(1, v[v.length - 1] - r.tam + 1); s <= Math.min(13 - r.tam + 1, v[0]); s++) {
-      if (v.every(x => x >= s && x <= s + r.tam - 1)) {
-        // Verificar adyacencia de jokers
-        const posicionesJoker = [];
-        for (let i = s; i < s + r.tam; i++) {
-          if (!v.includes(i)) posicionesJoker.push(i);
-        }
-        let consecutivos = false;
-        for (let i = 1; i < posicionesJoker.length; i++) {
-          if (posicionesJoker[i] === posicionesJoker[i-1] + 1) {
-            consecutivos = true;
-            break;
-          }
-        }
-        if (!consecutivos) return true;
-      }
+      if (v.every(x => x >= s && x <= s + r.tam - 1) && jokersOkEnRango(s, r.tam, v, numJokers)) return true;
     }
     return false;
   }
-  
-  return re.every(c => c.v === re[0].v);
+
+  return re.every(c => c.v === re[0].v) && (cartas.length-re.length)<=maxJokersValor(cartas.length);
 }
 
 function particionarGrupos(cartas,r){
@@ -169,7 +183,7 @@ function particionarGrupos(cartas,r){
  for(const v in por)while(por[v].length>=r.tam)grupos.push(por[v].splice(0,r.tam));
  let j=[...jk];
  for(const v in por){if(!por[v].length)continue;const need=r.tam-por[v].length;
-  if(need>j.length)return null;const g=[...por[v]];for(let i=0;i<need;i++)g.push(j.pop());grupos.push(g);}
+  if(need>j.length||need>maxJokersValor(r.tam))return null;const g=[...por[v]];for(let i=0;i<need;i++)g.push(j.pop());grupos.push(g);}
  if(j.length)return null;
  if(grupos.length!==r.cant)return null;
  return grupos;}
@@ -195,9 +209,13 @@ function getObjetivo(i){const r=RONDAS[i];
 
 function tieneJugada(e,n){return (e.bajadas?.[n]||[]).length>=RONDAS[e.ronda].cant;}
 function puedeCompra(e,n){return !!(e.compraHabilitada?.[n])&&(e.monedas?.[n]??0)>0;}
-/* Sopar NUNCA cuesta monedas (sólo comprar de la mesa cuesta 🪙1). La habilitación es la
-   misma bandera (ya abrió + le llegó el turno), pero sin exigir saldo de monedas. */
-function puedeSopar(e,n){return !!(e.compraHabilitada?.[n]);}
+/* Sopar NUNCA cuesta monedas (sólo comprar de la mesa cuesta 🪙1). Se puede sopar
+   TODAS las veces que quieras, pero SÓLO en tu propio turno y sólo después de haber
+   bajado la jugada obligatoria de apertura de la ronda (compraHabilitada[n] sólo se
+   activa para un jugador que ya abrió). Antes sólo se chequeaba la bandera, que
+   quedaba "prendida" aunque el turno ya hubiera pasado a otro jugador — permitía
+   sopar fuera de turno. */
+function puedeSopar(e,n){return e.jugadores?.[e.turnoIdx]===n && !!(e.compraHabilitada?.[n]);}
 
 /* Detecta si una jugada YA BAJADA es un grupo de valor (trica/cuarta/quina, mismo número)
    o una escalera (mismo palo, números consecutivos). No hay que asumirlo por el tipo de
@@ -216,38 +234,32 @@ function opcionesSopar(e){const opts=[],mano=e.manos?.[miNombre]||[];
    if(!esGrupoValor(g)){
     const vals=g.map(c=>c.val),s=Math.min(...vals),top=Math.max(...vals);
     const palo=g.find(c=>!c.joker)?.p;
-    /* 1) Cambiar/correr CUALQUIERA de los jokers de la escalera (cualquier jugador,
-       inclusive vos mismo sobre tu propia jugada bajada — no hay motivo de juego para
-       restringirlo a "otros jugadores" nada más, es tu carta y el joker sigue en juego).
-       El joker NUNCA se saca del juego: al poner tu carta real en su lugar, el joker se
-       desliza a un extremo y la escalera CRECE 1 carta. Se recorren TODOS los jokers del
-       grupo (puede haber más de uno, ej. una escalera de 7 con 2 jokers) — antes sólo se
-       consideraba el primero y el resto nunca generaba la opción. El cálculo del extremo
-       usa el tamaño real del grupo (g.length), no un tamaño fijo de 7, así que funciona
-       igual en escaleras de 3, 4, 5, 6 o 7 cartas. */
+    /* 1) Correr CUALQUIERA de los jokers de la escalera hacia un extremo (cualquier
+       jugador, inclusive vos mismo). El joker JAMÁS sale del juego ni de la escalera:
+       tu carta real ocupa su lugar y el joker se desliza a la punta, así que la
+       escalera CRECE 1 carta. Se valida que, en la nueva punta, el joker no quede
+       pegado a otro joker ya existente ahí (regla: nunca dos jokers consecutivos). */
     {
      g.forEach((card,jIdx)=>{
       if(!card.joker)return;
       const X=card.val;
       const hi=mano.findIndex(c=>!c.joker&&c.p===palo&&ORDEN[c.v]===X);
       if(hi===-1)return;
-      if(top+1<=13)opts.push({tipo:'escalera',jugador:n,gi,hi,jIdx,lado:'der',
-       desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} y correr el 🃏 al ${VALORES[top]}`});
-      if(s-1>=1)opts.push({tipo:'escalera',jugador:n,gi,hi,jIdx,lado:'izq',
-       desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} y correr el 🃏 al ${VALORES[s-2]}`});
-      /* 1b) PARTIR la escalera en dos grupos independientes, poniendo tu carta real
-         en el lugar exacto del joker (no correrlo a una punta). Útil cuando el joker
-         está en el MEDIO y no hay punta libre para correrlo (ej. una escalera ya
-         completa de A a K), pero también sirve como alternativa aunque sí haya punta
-         libre. Sólo se ofrece si el joker no está en un extremo (ahí "partir" no
-         tendría sentido, sería un grupo vacío) y ambos pedazos resultantes quedan
-         con 3 cartas o más (jugada mínima válida). */
-      if(jIdx>0&&jIdx<g.length-1){
-       const largoIzq=jIdx,largoDer=g.length-jIdx;
-       if(largoIzq>=3&&largoDer>=3)
-        opts.push({tipo:'escaleraPartir',jugador:n,gi,hi,jIdx,
-         desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} en el hueco del 🃏 y partir la escalera en 2 (${largoIzq}+${largoDer})`});
+      if(top+1<=13){
+       const cartaEnTop=g.find(c=>c.val===top);
+       if(!cartaEnTop?.joker)
+        opts.push({tipo:'escalera',jugador:n,gi,hi,jIdx,lado:'der',
+         desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} y correr el 🃏 al ${VALORES[top]}`});
       }
+      if(s-1>=1){
+       const cartaEnS=g.find(c=>c.val===s);
+       if(!cartaEnS?.joker)
+        opts.push({tipo:'escalera',jugador:n,gi,hi,jIdx,lado:'izq',
+         desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} y correr el 🃏 al ${VALORES[s-2]}`});
+      }
+      /* NOTA: a propósito NO se ofrece "partir la escalera en dos" — eso sacaría el
+         joker de la escalera, y en las escaleras el joker nunca se puede sacar, sólo
+         correr dentro de la misma escalera. */
      });
     }
     /* 2) Sopar carta que estira la escalera (cualquier jugador, inclusive vos) */
@@ -271,11 +283,16 @@ function opcionesSopar(e){const opts=[],mano=e.manos?.[miNombre]||[];
     });
    }else{
     const V=g.filter(c=>!c.joker)[0]?.v;
-    /* 1) Cambiar el joker por tu carta (solo a otros jugadores) */
-    if(n!==miNombre&&jI!==-1){
+    /* 1) Cambiar el joker de una trica/cuarta/quina por tu carta real del mismo número
+       — de CUALQUIER jugador, incluida la tuya propia. En una jugada de valor (no
+       escalera) sí está permitido sacar el joker: te lo llevás a la mano para usarlo
+       en otra jugada tuya en este mismo turno. */
+    if(jI!==-1){
      const hi=mano.findIndex(c=>!c.joker&&c.v===V);
      if(hi!==-1)opts.push({tipo:'grupo',jugador:n,gi,hi,
-      desc:`🧹 ${n}: cambiar su 🃏 por tu ${V} (te llevás el joker)`});
+      desc:n===miNombre
+       ?`🧹 Sacar el 🃏 de tu propia jugada de ${V} (poniendo tu ${V}) para usarlo en otra jugada`
+       :`🧹 ${n}: cambiar su 🃏 por tu ${V} (te llevás el joker)`});
     }
     /* 2) Sopar carta igual a la jugada (cualquier jugador, inclusive vos) */
     const hi=mano.findIndex(c=>!c.joker&&c.v===V);
@@ -320,11 +337,21 @@ function initHost(){
   miNombre=(localStorage.getItem('currentUser')||'').toUpperCase();
   txt('usuarioDisplay','👤 '+miNombre);
   const g=localStorage.getItem('gameId');
-  if(g){gameId=g;escuchar(g);
-   const ps=$('panelSetup');if(ps)ps.style.display='none';
-   const pm=$('panelMesa');if(pm)pm.style.display='block';}
+  if(g){
+    gameId=g;
+    escuchar(g);
+    const ps=$('panelSetup');if(ps)ps.style.display='none';
+    const pm=$('panelMesa');if(pm)pm.style.display='block';
+
+    // Regenerar los links de WhatsApp cuando hay partida activa
+    setTimeout(()=>{
+      if(estadoLocal && estadoLocal.jugadores){
+        renderWapp(estadoLocal.jugadores, gameId);
+      }
+    }, 500);
+  }
   else{
-   const ps=$('panelSetup');if(ps)ps.style.display='block';
+    const ps=$('panelSetup');if(ps)ps.style.display='block';
   }
 }
 
@@ -336,6 +363,10 @@ function escuchar(g){
     if(!snap.exists()){const er=$('errorScreen');if(er)er.style.display='flex';return;}
     estadoLocal=snap.val();
     const mc=$('mainContent');if(mc)mc.style.display='block';
+    /* Si el host arrancó una partida NUEVA (fase volvió a 'jugando'), la despedida
+       local de un jugador que se había ido queda obsoleta: hay que volver a mostrarle
+       la mesa. */
+    if(meFui && estadoLocal.fase==='jugando')meFui=false;
     renderMesa(estadoLocal);
   });
 }
@@ -343,6 +374,13 @@ function escuchar(g){
 /* ═══════════ RENDER ÚNICO ═══════════ */
 function renderMesa(e){
   if(!e)return;
+
+  /* ── FIN DE PARTIDA: se corta acá, no se sigue mostrando/habilitando la mesa ── */
+  if(e.fase==='partida_terminada'){
+   renderFinDePartida(e);
+   return;
+  }
+
   [...selSet].forEach(i=>{if(i>=(e.manos?.[miNombre]||[]).length)selSet.delete(i);});
   const ronda=RONDAS[e.ronda]||RONDAS[0];
   txt('rondaNombre',ronda.nombre);txt('rondaDisplay',ronda.nombre);txt('rondaBadge',ronda.nombre);
@@ -351,8 +389,27 @@ function renderMesa(e){
   const jug=e.jugadores[e.turnoIdx],mio=jug===miNombre;
 htm('turnoActual',`Turno: <strong>${jug}</strong>${mio?' <span class="mi-turno-tag">← vos</span>':''}`);
 
-// Banner GRANDE de turno (muy visible)
-if(mio){
+  /* Cartel de "TU TURNO" al lado de tu propio nombre en el header — antes el header
+     se pintaba una sola vez al cargar la página y nunca se volvía a actualizar, así
+     que nunca mostraba nada acá aunque te tocara jugar. Se actualiza en cada render,
+     tanto para el host como para el jugador, y desaparece solo apenas pasa el turno. */
+  const miHeaderTurno=mio?' <span class="turno-tag-badge">🎯 ¡TU TURNO!</span>':'';
+  htm('usuarioDisplay',`👤 ${miNombre}${miHeaderTurno}`);
+  htm('miNombreDisplay',`👤 ${miNombre}${miHeaderTurno}`);
+
+// Banner GRANDE de turno (muy visible) — si además te están apurando, se vuelve
+// el cartel de apuro (igual de grande y visible), y ambos desaparecen solos en
+// cuanto deja de ser tu turno.
+const miApurado=mio&&!!e.apressado?.[miNombre];
+if(miApurado){
+  htm('turnoBar',`
+    <div class="mi-turno-banner-grande turno-apurado">
+      <div class="turno-icono">⏰</div>
+      <div class="turno-texto">¡TE ESTÁN APURANDO!</div>
+      <div class="turno-subtexto">Jugá ya — los demás te están esperando</div>
+    </div>
+  `);
+} else if(mio){
   htm('turnoBar',`
     <div class="mi-turno-banner-grande">
       <div class="turno-icono">🎯</div>
@@ -370,16 +427,20 @@ if(mio){
    const esHost = (miNombre === e.host);
 const estHtml=e.jugadores.map(n=>{
   const hab=e.compraHabilitada?.[n];
-  const apressado = e.apressado?.[n];
-  const hacePoco = apressado && (Date.now() - apressado < 5000);
+  /* El apuro ya no se apaga solo por tiempo (eso dependía de que llegara otra
+     actualización de Firebase para volver a pintarse): ahora se limpia server-side
+     en cuanto el turno de ese jugador termina (ver tirarCarta/saltearTurno/
+     aceptarRonda), así que acá basta con mirar si sigue presente el flag. */
+  const apressado = !!e.apressado?.[n];
   const expulsado = e.expulsados?.[n];
-  
+  const esSuTurno = n===jug && !expulsado;
+
   // Botón de apurar: cualquiera puede apurar a cualquier otro
   let botonApurar = '';
   if(n !== miNombre && !expulsado){
     botonApurar = `<button onclick="apressarJugador('${n}')" class="btn-apurar" title="Apurar a ${n}">⏰</button>`;
   }
-  
+
   // Botones de host (solo el host los ve)
   let botonesHost = '';
   if(esHost && n !== miNombre && !expulsado){
@@ -388,15 +449,22 @@ const estHtml=e.jugadores.map(n=>{
       botonesHost += `<button onclick="saltearTurno()" class="btn-host-saltear" title="Saltear turno">⏭️</button>`;
     }
   }
-  
-  return `<div class="jug-estado ${n===jug?'jug-activo':''} ${expulsado?'jug-expulsado':''} ${hacePoco&&n===miNombre?'jug-apressado':''}">
+
+  /* Cartel de turno bien visible al lado del nombre — se muestra para CUALQUIER
+     jugador cuyo turno sea el activo, incluido el host cuando le toca a él mismo. */
+  const cartelTurno=esSuTurno
+   ?`<span class="turno-tag-badge">${n===miNombre?'🎯 ¡TU TURNO!':'▶ SU TURNO'}</span>`
+   :'';
+
+  return `<div class="jug-estado ${n===jug?'jug-activo':''} ${expulsado?'jug-expulsado':''} ${apressado&&n===miNombre?'jug-apressado':''}">
     <span class="jug-n">${n===miNombre?'👤 ':''}${n}${expulsado?' (expulsado)':''}</span>
+    ${cartelTurno}
     <span class="jug-c">🃏${e.manos?.[n]?.length||0}</span>
     <span class="monedas-tag">🪙${e.monedas?.[n]??7}</span>
     ${tieneJugada(e,n)?`<span class="tapó-tag">📥${hab?'✓':'⏳'}</span>`:''}
     ${botonApurar}
     ${botonesHost}
-    ${hacePoco && n===miNombre ? '<div class="banner-apuro">⏰ ¡TE ESTÁN APURANDO!</div>' : ''}
+    ${apressado && n===miNombre ? '<div class="banner-apuro">⏰ ¡TE ESTÁN APURANDO!</div>' : ''}
   </div>`;
 }).join('');
   htm('estadoJugadores', estHtml);
@@ -433,9 +501,10 @@ const estHtml=e.jugadores.map(n=>{
   pintaMano(mano,-1);
   const ok=tieneJugada(e,miNombre);
   const rob=$('btnRobar');if(rob)rob.style.opacity=mio&&e.robos===0?'1':'0.5';
-  const bb=$('btnBajar');if(bb){bb.disabled=!mio||selSet.size===0;
+  const puedeLibre=!!e.compraHabilitada?.[miNombre];
+  const bb=$('btnBajar');if(bb){bb.disabled=!mio||selSet.size===0||e.robos===0||(ok&&!puedeLibre);
    const cartasSel=[...selSet].sort((a,b)=>a-b).map(i=>mano[i]);
-   bb.textContent=describirSeleccion(cartasSel,ronda,ok);}
+   bb.textContent=describirSeleccion(cartasSel,ronda,ok,puedeLibre);}
   const bs=$('btnSopar');if(bs)bs.disabled=!mio||!puedeSopar(e,miNombre);
   const bt=$('btnTirar');if(bt)bt.disabled=!mio||selSet.size!==1||e.robos===0||mano.length<=1;
   /* TAPAR sólo cuando: es tu turno, ya abriste, tenés 1 carta seleccionada Y esa es tu
@@ -445,9 +514,9 @@ const estHtml=e.jugadores.map(n=>{
      exactamente 1 carta en la mano. NO hace falta que además la hayas "seleccionado" a
      mano — es la única carta posible, obligar a tocarla antes producía un botón que
      parecía no responder (deshabilitado en silencio, sin error). */
-  const btp=$('btnTapa');if(btp)btp.disabled=!mio||!ok||mano.length!==1;
+  const btp=$('btnTapa');if(btp)btp.disabled=!mio||!ok||mano.length!==1||e.robos===0;
   const sp=$('soparPanel');if(sp)sp.style.display='none';
-  /* Modal fin de ronda */
+  /* Modal fin de ronda (no confundir con fin de PARTIDA, que ahora corta arriba) */
   renderModalRonda(e);
 }
 
@@ -467,13 +536,13 @@ function renderModalRonda(e){
    if(r.fin){
     const g=r.ganador;
     html+=`<div class="modal-ronda-titulo fin">🏆 FIN DEL JUEGO 🏆</div>
-     <div class="modal-ganador">👑 ${g} GANÓ LA PARTIDA</div>`;
+     <div class="modal-ganador">👑 ${g} GANÓ LA PARTIDA (menor puntaje)</div>`;
    }else{
     html+=`<div class="modal-ronda-titulo">🟢 ${r.tapador} TAPÓ con ${r.cartaTapa}</div>
      <div class="modal-ronda-sub">Siguiente: <strong>${r.siguiente}</strong> · Empieza: <strong>${r.empiezaProx}</strong></div>`;
    }
    html+=`<div class="modal-ronda-tabla">`;
-   e.jugadores.sort((a,b)=>(r.puntajesAcum[a]||0)-(r.puntajesAcum[b]||0)).forEach((n,i)=>{
+   [...e.jugadores].sort((a,b)=>(r.puntajesAcum[a]||0)-(r.puntajesAcum[b]||0)).forEach((n,i)=>{
     const medallas=['🥇','🥈','🥉'];
     const cartas=r.cartasRestantes?.[n]||[];
     const cartasHtml=cartas.length
@@ -501,6 +570,57 @@ function renderModalRonda(e){
   }else{
    if(modal)modal.style.display='none';
   }
+}
+
+/* ═══════════ PANTALLA DE FIN DE PARTIDA ═══════════ */
+function renderFinDePartida(e){
+ /* Cierra cualquier modal de ronda que hubiera quedado abierto */
+ const modalRonda=$('modalRonda');if(modalRonda)modalRonda.style.display='none';
+
+ let modal=$('modalFinPartida');
+ if(!modal){
+  modal=document.createElement('div');
+  modal.id='modalFinPartida';modal.className='modal-ronda';
+  document.body.appendChild(modal);
+ }
+
+ const r=e.resultadoFinal||{};
+ const puntajes=r.puntajes||e.puntajes||{};
+ const esHost=(miNombre===e.host);
+
+ if(!esHost && meFui){
+  /* El jugador tocó "Salir": despedida simple, sin mostrar la tabla de nuevo */
+  modal.style.display='flex';
+  modal.innerHTML=`<div class="modal-ronda-card">
+   <div class="modal-ronda-titulo">👋 ¡Gracias por jugar!</div>
+   <div class="modal-ronda-sub">Podés cerrar esta pestaña.<br/>El mismo link te va a servir para la próxima partida.</div>
+  </div>`;
+  return;
+ }
+
+ modal.style.display='flex';
+ let html=`<div class="modal-ronda-card">
+  <div class="modal-ronda-titulo fin">🏆 FIN DEL JUEGO 🏆</div>
+  <div class="modal-ganador">👑 ${r.ganador||'—'} GANÓ LA PARTIDA (menor puntaje)</div>
+  <div class="modal-ronda-tabla">`;
+ [...e.jugadores].sort((a,b)=>(puntajes[a]||0)-(puntajes[b]||0)).forEach((n,i)=>{
+  const medallas=['🥇','🥈','🥉'];
+  html+=`<div class="modal-fila ${n===miNombre?'modal-fila-yo':''}">
+   <span class="modal-pos">${medallas[i]||i+1+'°'}</span>
+   <span class="modal-nombre">${n}</span>
+   <div class="modal-pts"><span class="pts-total">${puntajes[n]||0} pts</span></div>
+  </div>`;
+ });
+ html+=`</div>`;
+
+ if(esHost){
+  html+=`<button class="btn-aceptar-ronda" onclick="nuevaPartida()">🎲 Armar otra partida</button>`;
+ }else{
+  html+=`<div class="esperando-txt">⏳ Esperando a que ${e.host} arme una nueva partida...</div>
+   <button class="btn-aceptar-ronda" style="background:#78909c;margin-top:10px;" onclick="salirPartida()">🚪 Salir</button>`;
+ }
+ html+=`</div>`;
+ modal.innerHTML=html;
 }
 
 /* ═══════════ ARRASTRAR / SELECCIONAR ═══════════ */
@@ -565,11 +685,26 @@ document.addEventListener('pointercancel',()=>{drag=null;renderMesa(estadoLocal)
 
 window.ordenarMano=async function(){if(!estadoLocal)return;
  await runTransaction(ref(db,`partidas/${gameId}`),s=>{if(!s?.manos?.[miNombre])return;
-  s.manos[miNombre].sort((a,b)=>{
-   if(a.joker&&!b.joker)return 1;if(!a.joker&&b.joker)return -1;if(a.joker&&b.joker)return 0;
-   if(ORDEN_PALO[a.p]!==ORDEN_PALO[b.p])return ORDEN_PALO[a.p]-ORDEN_PALO[b.p];
-   return ORDEN[a.v]-ORDEN[b.v];});return s;});
- selSet.clear();log('🔃 Ordenaste tu mano');};
+  const mano=[...s.manos[miNombre]];
+  const jokers=mano.filter(c=>c.joker);
+  const reales=mano.filter(c=>!c.joker);
+  /* 1) Agrupar por número: los valores con 2 o más cartas quedan juntos primero, para
+     que se note de un vistazo qué tricas/cuartas/quinas ya tenés armadas o casi armadas
+     (ordenados de grupo más grande a más chico, y por palo dentro de cada grupo). */
+  const porValor={};
+  reales.forEach(c=>{(porValor[c.v]=porValor[c.v]||[]).push(c);});
+  const bloquesValor=Object.values(porValor).filter(g=>g.length>=2)
+   .sort((a,b)=>b.length-a.length||ORDEN[a[0].v]-ORDEN[b[0].v])
+   .map(g=>g.sort((a,b)=>ORDEN_PALO[a.p]-ORDEN_PALO[b.p]));
+  /* 2) El resto (números sueltos, sin pareja) se ordena por palo y número, así se ven
+     agrupadas las posibles escaleras (mismo palo, consecutivas). */
+  const usados=new Set();bloquesValor.forEach(g=>g.forEach(c=>usados.add(c.id)));
+  const sueltas=reales.filter(c=>!usados.has(c.id))
+   .sort((a,b)=>ORDEN_PALO[a.p]-ORDEN_PALO[b.p]||ORDEN[a.v]-ORDEN[b.v]);
+  /* 3) Los jokers van al final, listos para usarse donde hagan falta. */
+  s.manos[miNombre]=[...bloquesValor.flat(),...sueltas,...jokers];
+  return s;});
+ selSet.clear();log('🔃 Ordenaste tu mano (agrupando posibles jugadas)');};
 
 /* ═══════════ ACCIONES ═══════════ */
 window.robarDelMazo=async function(){if(!estadoLocal)return;const e=estadoLocal;
@@ -577,8 +712,7 @@ window.robarDelMazo=async function(){if(!estadoLocal)return;const e=estadoLocal;
  if(e.robos>0)return log('Ya robaste. Tirá una carta.');
  const r=await runTransaction(ref(db,`partidas/${gameId}`),s=>{
   if(!s)return;
-  // Dentro de runTransaction de robarDelMazo, después de if(!s)return;
-if (s.expulsados?.[miNombre]) return; // jugador expulsado no puede jugar
+  if (s.expulsados?.[miNombre]) return; // jugador expulsado no puede jugar
   if(s.jugadores[s.turnoIdx]!==miNombre)return;
   if(s.robos>0)return;
   asegurarMazo(s); /* si no hay cartas, rebaraja el pozo de descarte y sigue */
@@ -618,9 +752,8 @@ window.comprarMesa=async function(){if(!estadoLocal)return;const e=estadoLocal;
 
 window.tirarCarta=async function(){if(!estadoLocal||selSet.size!==1)return;const e=estadoLocal;
  if(e.jugadores[e.turnoIdx]!==miNombre)return log('No es tu turno');
- 
- // Al inicio de tirarCarta, después de verificar turno
-if (e.expulsados?.[miNombre]) return log('Estás expulsado, no podés jugar.');
+
+ if (e.expulsados?.[miNombre]) return log('Estás expulsado, no podés jugar.');
 
  if(e.robos===0)return log('Primero robá del mazo o comprá');
  const manoActual=e.manos?.[miNombre]||[];
@@ -637,11 +770,12 @@ if (e.expulsados?.[miNombre]) return log('Estás expulsado, no podés jugar.');
  const compraH={...(e.compraHabilitada||{})},nxt=e.jugadores[next];
  compraH[nxt]=(e.bajadas?.[nxt]||[]).length>=RONDAS[e.ronda].cant;
  selSet.clear();
- await update(ref(db,`partidas/${gameId}`),{manos,mesa,pozo,turnoIdx:next,robos:0,compraHabilitada:compraH});
+ await update(ref(db,`partidas/${gameId}`),{manos,mesa,pozo,turnoIdx:next,robos:0,compraHabilitada:compraH,[`apressado/${miNombre}`]:null});
  log(`↩ ${miNombre} tiró ${c.v}${c.p}`);};
 
 window.bajarJugada=async function(){if(!estadoLocal||selSet.size===0)return;const e=estadoLocal;
  if(e.jugadores[e.turnoIdx]!==miNombre)return log('No es tu turno');
+ if(e.robos===0)return alert('❌ Primero tenés que robar del mazo (o comprar) antes de bajar tu jugada.\n\nSi no, podrías llegar a tapar y ganar la ronda sin haber levantado ninguna carta en tu turno.');
  const ronda=RONDAS[e.ronda],mano=e.manos?.[miNombre]||[];
  const cartas=[...selSet].sort((a,b)=>a-b).map(i=>mano[i]);
   if(mano.length-cartas.length<1){
@@ -657,6 +791,17 @@ window.bajarJugada=async function(){if(!estadoLocal||selSet.size===0)return;cons
    alert(`❌ Todavía no bajaste la jugada obligatoria de apertura de esta ronda.\n\n📌 Ronda actual: ${ronda.nombre}\nTenés que bajar EXACTAMENTE ${ronda.cant} jugada(s) de ${ronda.tam} cartas = ${ronda.cant*ronda.tam} cartas, TODAS JUNTAS de una vez.\n\n🃏 El joker vale por cualquier carta.\n✋ Cartas que marcaste: ${cartas.length}\n\nRecién después de bajar esta jugada obligatoria vas a poder bajar jugadas sueltas, comprar y sopar.`);
    return;}
  }else{
+  /* Ya cumplió la apertura — PERO si la abrió recién EN ESTE MISMO turno, todavía no
+     puede bajar nada más: en el turno de apertura sólo se puede bajar esa jugada
+     obligatoria. Las jugadas libres (y el sopar) recién se habilitan desde su
+     SIGUIENTE turno — mismo flag `compraHabilitada` que ya usa el sopar, que sólo se
+     enciende cuando le vuelve a tocar después de haber abierto. Esto vale igual en
+     todas las rondas. La compra de la mesa NO se ve afectada: esa sigue disponible en
+     cualquier momento. */
+  if(!e.compraHabilitada?.[miNombre]){
+   alert('❌ Ya bajaste la jugada de apertura de esta ronda.\n\n📌 En el turno en que abrís SOLO podés bajar esa jugada obligatoria. Para bajar jugadas sueltas (o sopar) tenés que esperar a tu PRÓXIMO turno — podés comprar de la mesa mientras tanto sin problema.');
+   return;
+  }
   /* Ya cumplió la apertura: puede bajar CUALQUIER combinación válida (trica, cuarta, quina...,
      o una escalera de 3 o más del mismo palo), sin depender del tipo/tamaño de esta ronda */
   if(cartas.length>=3&&grupoValido(cartas,{tipo:'escalera',tam:cartas.length})){
@@ -665,7 +810,7 @@ window.bajarJugada=async function(){if(!estadoLocal||selSet.size===0)return;cons
    grupos=particionarLibreValor(cartas);
   }
   if(!grupos){
-   alert(`❌ La selección no forma jugada(s) válida(s).\n\n📌 Ya cumpliste la apertura de esta ronda, así que ahora podés bajar cualquier combinación válida: grupos de 3 o más cartas del mismo número (trica, cuarta, quina...) o una escalera de 3 o más del mismo palo. El joker completa cualquier grupo.\n\n✋ Cartas que marcaste: ${cartas.length}`);
+   alert(`❌ La selección no forma jugada(s) válida(s).\n\n📌 Podés bajar cualquier combinación válida: grupos de 3 o más cartas del mismo número (trica, cuarta, quina...) o una escalera de 3 o más del mismo palo. El joker completa cualquier grupo.\n\n✋ Cartas que marcaste: ${cartas.length}`);
    return;}
  }
  grupos=grupos.map(g=>g.map(c=>({...c,dueno:miNombre})));
@@ -678,7 +823,10 @@ window.bajarJugada=async function(){if(!estadoLocal||selSet.size===0)return;cons
  await update(ref(db,`partidas/${gameId}`),{manos,bajadas,compraHabilitada:compraH});
  log(`📥 ${miNombre} bajó la jugada completa`);};
 
-window.abrirSopar=function(){if(!estadoLocal||!estadoLocal.compraHabilitada?.[miNombre])
+window.abrirSopar=function(){if(!estadoLocal)return;
+ if(estadoLocal.jugadores?.[estadoLocal.turnoIdx]!==miNombre)
+  return alert('❌ Sólo podés sopar en tu propio turno.');
+ if(!estadoLocal.compraHabilitada?.[miNombre])
   return alert('❌ Recién podés sopar desde tu siguiente turno después de bajar la jugada.');
  const opts=opcionesSopar(estadoLocal);
  if(!opts.length)return alert('No hay jokers para sopar con tus cartas.');
@@ -689,19 +837,27 @@ window.abrirSopar=function(){if(!estadoLocal||!estadoLocal.compraHabilitada?.[mi
 window.ejecutarSopar=async function(i){
   const o=window._soparOpts?.[i];
   if(!o)return;
-  
+
   const res = await runTransaction(ref(db,`partidas/${gameId}`),s=>{
     if(!s)return;
+    /* Re-valida server-side que siga siendo tu turno: si el estado cambió entre que
+       se abrió el panel de sopar y que tocaste el botón (por ej. tu turno ya pasó),
+       la acción se aborta acá en vez de aplicarse fuera de turno. */
+    if(s.jugadores?.[s.turnoIdx]!==miNombre)return;
     const g=s.bajadas?.[o.jugador]?.[o.gi];
     if(!g)return;
     const mm=s.manos[miNombre],mia=mm?.[o.hi];
     if(!mia)return;
-    
+
     if(o.tipo==='grupo'){
+      /* Sacar el joker de una trica/cuarta/quina (propia o ajena) poniendo tu carta
+         real del mismo número en su lugar. El joker pasa a TU mano para que lo puedas
+         usar en otra jugada. En escaleras esto NO existe: acá sólo entran grupos de
+         valor (esGrupoValor true), nunca escaleras. */
       const jI=g.findIndex(c=>c.joker);
       if(jI===-1)return;
       const jk=g[jI];
-      g[jI]={...mia,dueno:miNombre};
+      g[jI]={...mia,dueno:o.jugador};
       mm.splice(o.hi,1);
       mm.push({...jk});
     }
@@ -711,7 +867,11 @@ window.ejecutarSopar=async function(i){
       const vals=g.map(c=>c.val),s0=Math.min(...vals),top0=Math.max(...vals);
       const nv=o.lado==='der'?top0+1:s0-1;
       if(nv<1||nv>13)return;
-      g[jIdx]={...mia,dueno:miNombre,val:jk.val};
+      /* Re-validar server-side que el nuevo extremo no quede con dos jokers pegados
+         (por si el estado cambió entre que se abrió el panel y se tocó el botón). */
+      const cartaEnExtremo=o.lado==='der'?g.find(c=>c.val===top0):g.find(c=>c.val===s0);
+      if(cartaEnExtremo?.joker)return;
+      g[jIdx]={...mia,dueno:o.jugador,val:jk.val};
       const jokerCorrido={...jk,val:nv};
       if(o.lado==='der')g.push(jokerCorrido);
       else g.unshift(jokerCorrido);
@@ -719,48 +879,46 @@ window.ejecutarSopar=async function(i){
       mm.splice(o.hi,1);
     }
     else if(o.tipo==='adj'){
-      g.push({...mia,dueno:miNombre});
+      g.push({...mia,dueno:o.jugador});
       mm.splice(o.hi,1);
     }
     else if(o.tipo==='adjEsc'){
-      const nueva={...mia,dueno:miNombre,val:o.val};
+      /* Si se estira con un joker propio, re-validar límite/adyacencia server-side. */
+      if(mia.joker){
+        const bordeEsJoker=o.lado==='izq'?g[0]?.joker:g[g.length-1]?.joker;
+        const jokersActuales=g.filter(c=>c.joker).length;
+        if(bordeEsJoker||(jokersActuales+1)>maxJokersEscalera(g.length+1))return;
+      }
+      const nueva={...mia,dueno:o.jugador,val:o.val};
       if(o.lado==='izq')g.unshift(nueva);
       else g.push(nueva);
       g.sort((a,b)=>a.val-b.val);
       mm.splice(o.hi,1);
     }
-    else if(o.tipo==='escaleraPartir'){
-      const jIdx=o.jIdx,jk=g[jIdx];
-      if(jk==null||!jk.joker)return;
-      const paloEsc=g.find(c=>!c.joker)?.p;
-      if(!mia.joker&&(mia.p!==paloEsc||ORDEN[mia.v]!==jk.val))return;
-      const grupoIzq=g.slice(0,jIdx);
-      const grupoDer=[{...mia,dueno:miNombre,val:jk.val},...g.slice(jIdx+1)];
-      if(grupoIzq.length<3||grupoDer.length<3)return;
-      s.bajadas[o.jugador].splice(o.gi,1,grupoIzq,grupoDer);
-      mm.splice(o.hi,1);
-    }
     return s;
   });
-  
+
   if(res.committed){
     log(`🧹 ${miNombre} sopó a ${o.jugador}`);
-    
-    // ✅ Usar el snapshot FRESCO del servidor (no el estadoLocal cacheado)
+
+    // Usar el snapshot FRESCO del servidor (no el estadoLocal cacheado)
     const estadoFresco = res.snapshot.val();
     const nuevasOpts = opcionesSopar(estadoFresco);
-    
+
     if(!nuevasOpts.length){
       const sp=$('soparPanel');
       if(sp)sp.style.display='none';
       window._soparOpts=[];
       return;
     }
-    
+
     window._soparOpts=nuevasOpts;
     htm('soparOpts',nuevasOpts.map((opt,idx)=>
       `<button class="sopar-btn" onclick="ejecutarSopar(${idx})">${opt.desc}</button>`
     ).join(''));
+  }else{
+    const sp=$('soparPanel');if(sp)sp.style.display='none';
+    log('❌ No se pudo sopar (puede que tu turno ya haya pasado). Volvé a abrir SOPAR si sigue siendo tu turno.');
   }
 };
 
@@ -768,6 +926,7 @@ window.ejecutarSopar=async function(i){
 window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
  if(e.jugadores[e.turnoIdx]!==miNombre)return log('No es tu turno');
  if(!tieneJugada(e,miNombre))return alert('❌ Para TAPAR primero bajá la jugada completa de la ronda.');
+ if(e.robos===0)return alert('❌ Primero tenés que robar del mazo (o comprar) en este turno antes de poder TAPAR.');
  const manoAntes=e.manos?.[miNombre]||[];
  if(manoAntes.length!==1)return alert('❌ Para TAPAR tenés que llegar con UNA sola carta en la mano (la última). Bajá o tirá el resto antes de tapar.');
  /* Con 1 sola carta en la mano no hay nada para "elegir": es esa carta sí o sí, así que
@@ -786,6 +945,7 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
    if(!s||s.fase!=='jugando')return;
    if(s.jugadores[s.turnoIdx]!==miNombre)return;
    if(!tieneJugada(s,miNombre))return;
+   if(s.robos===0)return; /* tiene que haber robado (o comprado) en este turno antes de tapar */
    const mmActual=s.manos?.[miNombre]||[];
    if(mmActual.length!==1)return; /* sólo se puede tapar con la ÚLTIMA carta */
    const manos=JSON.parse(JSON.stringify(s.manos)),mm=[...(manos[miNombre]||[])];
@@ -801,6 +961,8 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
       siguiente en orden de turno". */
    const idxTapador=s.jugadores.indexOf(miNombre);
    const ns=fin?s.starterIdx:(idxTapador>=0?idxTapador:s.starterIdx);
+   /* Gana la PARTIDA quien saca MENOR puntaje acumulado (reduce se queda con el menor). */
+   const ganador=fin?s.jugadores.reduce((a,b)=>puntajes[a]<puntajes[b]?a:b):null;
    s.manos=manos;
    s.puntajes=puntajes;
    s.fase='esperando_aceptacion';
@@ -812,7 +974,7 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
     cartasRestantes:manos,
     rondaNum:s.ronda,
     fin,
-    ganador:fin?s.jugadores.reduce((a,b)=>puntajes[a]<puntajes[b]?a:b):null,
+    ganador,
     siguiente:fin?null:RONDAS[nr].nombre,
     empiezaProx:fin?null:miNombre,
     aceptaron:{}
@@ -835,6 +997,7 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
     else if(s.fase!=='jugando')motivo=`La partida no está en fase "jugando" (está en "${s.fase}").`;
     else if(s.jugadores[s.turnoIdx]!==miNombre)motivo=`El servidor dice que el turno es de ${s.jugadores[s.turnoIdx]}, no tuyo. Puede que falte refrescar la pantalla.`;
     else if(!tieneJugada(s,miNombre))motivo='El servidor dice que todavía no bajaste la jugada obligatoria de apertura de esta ronda.';
+    else if(s.robos===0)motivo='El servidor dice que todavía no robaste (ni compraste) en este turno.';
     else if((s.manos?.[miNombre]||[]).length!==1)motivo=`El servidor dice que tenés ${(s.manos?.[miNombre]||[]).length} cartas en mano, no 1.`;
    }catch(e2){console.error('diagnóstico tapar error:',e2);}
    log(`❌ No se pudo TAPAR: ${motivo}`);
@@ -857,11 +1020,25 @@ window.aceptarRonda=async function(){if(!estadoLocal)return;
     s.resumenRonda.aceptaron=aceptaron;
     return s;
    }
-   /* Todos aceptaron: avanzar de ronda. Usamos SIEMPRE s.ronda (nunca resumenRonda.rondaNum) */
-   const nr=(s.ronda||0)+1, fin=nr>=RONDAS.length;
+
+   /* ── Si esta fue la ÚLTIMA ronda (escalera, tapada), la PARTIDA terminó: no se
+      reparte una ronda nueva ni se sigue jugando. Se congela el estado en
+      'partida_terminada' con el resultado final, y ahí se queda hasta que el host
+      arme una partida nueva (ver nuevaPartida()/iniciarPartida()). ── */
+   if(r.fin){
+    s.fase='partida_terminada';
+    s.puntajes=r.puntajesAcum||s.puntajes;
+    s.resultadoFinal={ganador:r.ganador,puntajes:r.puntajesAcum||s.puntajes};
+    s.resumenRonda=null;
+    return s;
+   }
+
+   /* Todos aceptaron y NO es la última ronda: avanzar de ronda normalmente.
+      Usamos SIEMPRE s.ronda (nunca resumenRonda.rondaNum). */
+   const nr=(s.ronda||0)+1;
    /* El que TAPÓ la ronda (guardado en el resumen) es quien arranca la próxima ronda. */
    const idxTapador=(s.jugadores||[]).indexOf(r.tapador);
-   const ns = fin ? s.starterIdx : s.jugadores.indexOf(r.tapador);
+   const ns = idxTapador>=0 ? idxTapador : ((s.starterIdx||0)+1)%s.jugadores.length;
    /* Las monedas son de TODA la partida, no se resetean al pasar de ronda: se conservan
       las que le quedaban a cada jugador (7 sólo la primera vez, por si faltara alguna). */
    const bajadas={},compraH={},monedas={...(s.monedas||{})};
@@ -869,7 +1046,7 @@ window.aceptarRonda=async function(){if(!estadoLocal)return;
    let mazoNuevo=crearMazo(),manosFinales={};
    s.jugadores.forEach(n=>{manosFinales[n]=[];for(let x=0;x<11;x++)manosFinales[n].push(mazoNuevo.pop());});
    const cartaInicial=mazoNuevo.pop(); /* se destapa la primera carta de la mesa al arrancar la nueva ronda */
-   s.ronda=fin?nr-1:nr;
+   s.ronda=nr;
    s.puntajes=r.puntajesAcum||s.puntajes;
    s.bajadas=bajadas;
    s.monedas=monedas;
@@ -879,9 +1056,10 @@ window.aceptarRonda=async function(){if(!estadoLocal)return;
    s.robos=0;
    s.turnoIdx=ns;
    s.starterIdx=ns;
-   s.fase=fin?'finalizado':'jugando';
+   s.fase='jugando';
    s.mazo=mazoNuevo;
    s.manos=manosFinales;
+   s.apressado=null; /* ronda nueva, arrancamos sin carteles de apuro pegados de la ronda anterior */
    s.resumenRonda=null;
    return s;
   });
@@ -900,57 +1078,16 @@ window.apressarJugador = async function(nombre) {
   log(`⏰ ${miNombre} apuró a ${nombre}`);
 };
 
-/* ═══════════ HOST: SALTEAR / EXPULSAR ═══════════ */
-window.saltearTurno = async function() {
-  if (!estadoLocal) return;
-  const e = estadoLocal;
-  const jugActual = e.jugadores[e.turnoIdx];
-  const next = (e.turnoIdx + 1) % e.jugadores.length;
-  await update(ref(db, `partidas/${gameId}`), { turnoIdx: next, robos: 0 });
-  log(`⏭️ ${miNombre} salteó el turno de ${jugActual}`);
-};
-
-window.expulsarJugador = async function(nombre) {
-  if (!confirm(`¿Expulsar a ${nombre}? Sus jugadas bajadas quedan en la mesa.`)) return;
-  await runTransaction(ref(db, `partidas/${gameId}`), s => {
-    if (!s) return;
-    const idx = s.jugadores.indexOf(nombre);
-    if (idx === -1) return;
-    if (!s.expulsados) s.expulsados = {};
-    s.expulsados[nombre] = true;
-    if (s.jugadores[s.turnoIdx] === nombre) {
-      s.turnoIdx = (s.turnoIdx + 1) % s.jugadores.length;
-      s.robos = 0;
-    }
-    return s;
-  });
-  log(`🚫 ${miNombre} expulsó a ${nombre}`);
-};
-
- /* ═══════════ APRESSAR JUGADOR (cualquiera puede) ═══════════ */
-window.apressarJugador = async function(nombre) {
-  if (!estadoLocal) return;
-  await update(ref(db, `partidas/${gameId}/apressado`), { [nombre]: Date.now() });
-  log(`⏰ ${miNombre} apuró a ${nombre}`);
-};
-
-/* ═══════════ SOLO HOST: SETUP Y LINKS ═══════════ */
 /* ═══════════ HOST: APRESSAR / SALTEAR / EXPULSAR ═══════════ */
-window.apressarJugador = async function(nombre) {
-  if (!estadoLocal) return;
-  await update(ref(db, `partidas/${gameId}/apressado`), { [nombre]: Date.now() });
-  log(`⏰ ${miNombre} apuró a ${nombre}`);
-};
-
 window.saltearTurno = async function() {
   if (!estadoLocal) return;
   const e = estadoLocal;
   const jugActual = e.jugadores[e.turnoIdx];
   let next = (e.turnoIdx + 1) % e.jugadores.length;
-while (e.expulsados?.[e.jugadores[next]] && next !== e.turnoIdx) {
-  next = (next + 1) % e.jugadores.length;
-}
-  await update(ref(db, `partidas/${gameId}`), { turnoIdx: next, robos: 0 });
+  while (e.expulsados?.[e.jugadores[next]] && next !== e.turnoIdx) {
+    next = (next + 1) % e.jugadores.length;
+  }
+  await update(ref(db, `partidas/${gameId}`), { turnoIdx: next, robos: 0, [`apressado/${jugActual}`]: null });
   log(`⏭️ ${miNombre} salteó el turno de ${jugActual}`);
 };
 
@@ -963,6 +1100,7 @@ window.expulsarJugador = async function(nombre) {
     // Marcar como expulsado (no borramos del array para mantener índices)
     if (!s.expulsados) s.expulsados = {};
     s.expulsados[nombre] = true;
+    if (s.apressado) s.apressado[nombre] = null;
     // Si era su turno, avanzar al siguiente
     if (s.jugadores[s.turnoIdx] === nombre) {
       s.turnoIdx = (s.turnoIdx + 1) % s.jugadores.length;
@@ -973,6 +1111,26 @@ window.expulsarJugador = async function(nombre) {
   log(`🚫 ${miNombre} expulsó a ${nombre}`);
 };
 
+/* ═══════════ FIN DE PARTIDA: nueva partida (host) / salir (jugador) ═══════════ */
+window.nuevaPartida=function(){
+ /* Sólo el host puede armar otra partida. Reutilizamos el MISMO gameId (por eso NO
+    tocamos localStorage.gameId ni generamos uno nuevo acá) para que los links de
+    WhatsApp que ya se mandaron sigan sirviendo. */
+ if(!estadoLocal||miNombre!==estadoLocal.host)return;
+ reusarGameId=true;
+ const modal=$('modalFinPartida');if(modal)modal.style.display='none';
+ const pm=$('panelMesa');if(pm)pm.style.display='none';
+ const ps=$('panelSetup');if(ps)ps.style.display='block';
+ /* Reseteamos el formulario de setup para que pida jugadores de nuevo */
+ const nj=$('numJugadores');if(nj)nj.value='';
+ const ij=$('inputJugadores');if(ij)ij.innerHTML='';
+ const btn=$('btnIniciar');if(btn){btn.disabled=false;btn.textContent='🃏 Repartir cartas';}
+};
+
+window.salirPartida=function(){
+ meFui=true;
+ renderMesa(estadoLocal);
+};
 
 window.crearInputs=function(){const num=parseInt($('numJugadores')?.value)||0;
  const c=$('inputJugadores');if(!c)return;
@@ -993,14 +1151,21 @@ window.iniciarPartida=async function(){const num=parseInt($('numJugadores')?.val
  const btn=$('btnIniciar');btn.disabled=true;btn.textContent='⏳ Repartiendo...';
  let st=$('starterSel')?.value;if(!nombres.includes(st))st=miNombre;
  const sIdx=nombres.indexOf(st);
- gameId=Math.random().toString(36).substring(2,8).toUpperCase();
+ /* Si venimos de "🎲 Armar otra partida" tras un fin de juego, reusamos el mismo
+    gameId (los links viejos de WhatsApp siguen valiendo); si no, generamos uno nuevo. */
+ if(!(reusarGameId&&gameId))gameId=Math.random().toString(36).substring(2,8).toUpperCase();
+ reusarGameId=false;
  const mazo=crearMazo(),manos={},puntajes={},bajadas={},monedas={},compraH={};
  nombres.forEach(n=>{manos[n]=[];puntajes[n]=0;bajadas[n]=[];monedas[n]=7;compraH[n]=false;});
  for(let c=0;c<11;c++)nombres.forEach(n=>manos[n].push(mazo.pop()));
  const cartaInicial=mazo.pop(); /* el host destapa la primera carta de la mesa al arrancar la partida */
+ /* set() SOBRESCRIBE todo el nodo (incluida cualquier partida vieja terminada en ese
+    mismo gameId), así que la revancha arranca 100% limpia: ronda 0 = 1 trica, sin
+    expulsados/apressados/resultadoFinal de la partida anterior. */
  await set(ref(db,`partidas/${gameId}`),{gameId,host:miNombre,ronda:0,turnoIdx:sIdx,starterIdx:sIdx,
   jugadores:nombres,manos,mazo,mesa:cartaInicial,pozo:[],bajadas,puntajes,monedas,compraHabilitada:compraH,robos:0,fase:'jugando'});
  localStorage.setItem('gameId',gameId);
+ meFui=false;
  escuchar(gameId);
  $('panelSetup').style.display='none';$('panelMesa').style.display='block';
  renderWapp(nombres,gameId);};

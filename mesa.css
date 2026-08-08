@@ -123,21 +123,54 @@ body {
 .mi-turno-tag { background:#e9c87e; color:#4a3a17; padding:2px 8px;
   border-radius:10px; font-size:0.8rem; font-weight:700; margin-left:6px; }
 
-/* ── TURNO BANNER ── */
+/* ── TURNO BANNER (grande y legible, pensado para adultos mayores) ── */
 .turno-bar { margin:10px 12px; }
-.mi-turno-banner {
+.mi-turno-banner, .mi-turno-banner-grande {
   background:linear-gradient(135deg,#f0d9a6,#e2b877);
-  color:#4a3a17; padding:14px; border-radius:12px; text-align:center;
-  font-size:1.2rem; font-weight:900; letter-spacing:.5px;
+  color:#4a3a17; padding:16px; border-radius:14px; text-align:center;
+  display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
   animation:pulse 1.5s infinite;
 }
+.turno-icono { font-size:1.8rem; line-height:1; }
+.turno-texto { font-size:1.5rem; font-weight:900; letter-spacing:.5px; }
+.turno-subtexto { font-size:0.85rem; font-weight:600; opacity:.8; display:block; width:100%; margin-top:2px; }
 .esperando-banner {
-  background:rgba(255,255,255,.5); color:#7d9a77; padding:12px;
-  border-radius:12px; text-align:center; font-size:0.95rem;
+  background:rgba(255,255,255,.5); color:#7d9a77; padding:14px;
+  border-radius:14px; text-align:center; font-size:1.05rem; font-weight:600;
 }
 @keyframes pulse {
   0%,100% { box-shadow:0 0 0 0 rgba(201,162,75,.35); }
   50%      { box-shadow:0 0 0 12px rgba(201,162,75,0); }
+}
+
+/* ── APURAR (cualquiera puede apurar a cualquiera) ── */
+.turno-apurado {
+  background:linear-gradient(135deg,#f6a35f,#e0713f) !important;
+  color:#fff !important;
+  animation:pulseApuro .8s infinite !important;
+}
+@keyframes pulseApuro {
+  0%,100% { box-shadow:0 0 0 0 rgba(224,113,63,.55); }
+  50%     { box-shadow:0 0 0 16px rgba(224,113,63,0); }
+}
+.btn-apurar {
+  background:rgba(233,200,126,.25); border:1px solid rgba(201,162,75,.45);
+  color:#b08a2e; border-radius:8px; padding:3px 8px; font-size:0.9rem;
+  cursor:pointer; line-height:1; transition:all .15s;
+}
+.btn-apurar:hover { background:rgba(233,200,126,.5); transform:scale(1.1); }
+.jug-apressado {
+  border-color:#e0713f !important; background:rgba(224,113,63,.15) !important;
+  animation:pulseApuroChico 1s infinite;
+}
+@keyframes pulseApuroChico {
+  0%,100% { box-shadow:0 0 0 0 rgba(224,113,63,.4); }
+  50%     { box-shadow:0 0 0 8px rgba(224,113,63,0); }
+}
+.banner-apuro {
+  width:100%; margin-top:6px; background:linear-gradient(135deg,#f6a35f,#e0713f);
+  color:#fff; font-weight:800; font-size:0.78rem; text-align:center;
+  padding:6px 8px; border-radius:8px; animation:pulseApuro .8s infinite;
 }
 
 /* ── WAPP BAR ── */
@@ -189,7 +222,7 @@ body {
 .descarte-vacio { color:rgba(60,74,57,.35); font-size:1.5rem; }
 .descarte-sub { font-size:0.65rem; color:rgba(60,74,57,.5); text-align:center; }
 
-/* ── CARTAS ── */
+/* ── CARTAS (números grandes para que se distingan bien) ── */
 .carta {
   width:64px; height:90px; border-radius:8px;
   display:flex; flex-direction:column; justify-content:space-between;
@@ -202,7 +235,6 @@ body {
   -webkit-user-select:none;
   -webkit-touch-callout:none;
 }
-#miMano .carta.carta-arrastrando { transform:scale(1.08) translateY(-8px); box-shadow:0 10px 18px rgba(0,0,0,.35); z-index:5; }
 .carta:hover { transform:translateY(-6px); box-shadow:2px 8px 12px rgba(60,74,57,.3); }
 .carta-negra { background:white; color:#2b2b2b; }
 .carta-roja  { background:white; color:#c66060; }
@@ -210,18 +242,13 @@ body {
   background:linear-gradient(135deg,#a58fd0,#8e6fc0);
   color:#fff8e6; border:2px solid #e9c87e;
 }
-/* Reemplazar estas reglas en mesa.css */
-.cv-top { font-size: 1.1rem; font-weight: 900; line-height: 1; }
-.cp     { font-size: 1.4rem; text-align: center; line-height: 1; }
-.cv-bot { font-size: 1.1rem; font-weight: 900; line-height: 1;
-  transform: rotate(180deg); align-self: flex-end; }
-
-.carta-grande .cv-top { font-size: 1.3rem; }
-.carta-grande .cp     { font-size: 1.8rem; }
-.carta-grande .cv-bot { font-size: 1.3rem; }
-
-.carta-mini .cv-top { font-size: 0.85rem; }
-.carta-mini .cp     { font-size: 1rem; }
+.cv-top { font-size:1.2rem; font-weight:900; line-height:1; }
+.cp     { font-size:1.65rem; text-align:center; line-height:1; }
+.cv-bot { font-size:1.2rem; font-weight:900; line-height:1;
+  transform:rotate(180deg); align-self:flex-end; }
+.carta-grande { width:80px; height:110px; }
+.carta-grande .cv-top { font-size:0.9rem; }
+.carta-grande .cp     { font-size:1.6rem; }
 
 /* ── MI MANO ── */
 .mi-mano-section {
@@ -236,6 +263,13 @@ body {
 }
 .hint-tapa { font-size:0.8rem; color:rgba(60,74,57,.55);
   text-align:center; margin-bottom:10px; }
+
+/* Header de mano: nombre + ordenar en la misma línea (ahorra scroll) */
+.mano-header-row {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+}
+.mano-header-row h3 { margin-bottom:0; }
+.mano-header-row .btn-ordenar { margin:0; }
 
 /* ── ESTADO JUGADORES ── */
 .estado-jugadores {
@@ -254,6 +288,19 @@ body {
 .jug-c { color:#7d9a77; font-size:0.85rem; }
 .tapó-tag { background:#7bab84; color:white; padding:2px 8px;
   border-radius:8px; font-size:0.75rem; font-weight:700; }
+.turno-tag-badge {
+  background:linear-gradient(135deg,#e9c87e,#c9a24b);
+  color:#4a3a17; font-size:0.7rem; font-weight:800;
+  padding:2px 8px; border-radius:10px; margin-left:4px;
+  white-space:nowrap;
+}
+
+/* Variante compacta: al lado del mazo, en columna, para no ocupar todo el ancho */
+.estado-jugadores-inline {
+  flex:1; flex-direction:column; align-items:stretch;
+  max-width:220px; margin:0; gap:5px;
+}
+.estado-jugadores-inline .jug-estado { padding:5px 8px; font-size:0.8rem; }
 
 /* ── LOG ── */
 .log-eventos {
@@ -310,8 +357,7 @@ body {
 .bajada-grupo .carta-mini:first-child{margin-left:0;}
 .bajada-grupo + .bajada-grupo{margin-left:12px;}
 .carta-mini{width:40px;height:56px;padding:2px 3px;border-radius:6px;}
-.carta-mini .cv-top{font-size:.78rem;}
-.carta-mini .cv-bot{font-size:.78rem;}
+.carta-mini .cv-top{font-size:.6rem;}
 .carta-mini .cp{font-size:.85rem;}
 .sopar-panel { margin:0 12px 12px; padding:12px; background:rgba(233,200,126,.25);
   border:1px solid #c9a24b; border-radius:12px; }
@@ -327,7 +373,7 @@ body {
 .btn-ordenar:hover{background:rgba(60,74,57,.16);}
 .btn-ordenar.activo{background:linear-gradient(135deg,#e9c87e,#d9a75f);color:#4a3a17;}
 
-/* ── ACCIONES DE JUEGO (BAJAR / SOPAR / TIRAR / TAPA): grilla compacta 2x2 para mobile ── */
+/* ── ACCIONES DE JUEGO (BAJAR / SOPAR / TIRAR / TAPA): grilla compacta 2x2 ── */
 .acciones-juego{
   display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;
 }
@@ -337,6 +383,42 @@ body {
 }
 @media (max-width:380px){
   .acciones-juego button{ font-size:.75rem; padding:9px 4px; }
+}
+
+/* ── SECCIONES PLEGABLES (puntajes, jugadas en mesa, log, links) ──
+   Info secundaria que no hace falta ver todo el tiempo: colapsada por
+   defecto para que la persona no tenga que desplazarse tanto en el celular. */
+.seccion-colapsable {
+  margin:0 12px 8px;
+  background:rgba(255,255,255,.55);
+  border-radius:10px;
+  border:1px solid rgba(60,74,57,.1);
+  overflow:hidden;
+}
+.seccion-colapsable summary {
+  padding:12px 14px;
+  font-size:0.9rem;
+  font-weight:700;
+  color:#7d9a77;
+  cursor:pointer;
+  user-select:none;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.seccion-colapsable summary::-webkit-details-marker { display:none; }
+.seccion-colapsable summary::before {
+  content:'▶';
+  font-size:0.7rem;
+  transition:transform .2s;
+  color:#c9a24b;
+}
+.seccion-colapsable[open] summary::before { transform:rotate(90deg); }
+.seccion-colapsable .wapp-bar-inner,
+.seccion-colapsable .jugadas-contenido {
+  padding:8px 14px 14px;
+  border-top:1px solid rgba(60,74,57,.08);
 }
 
 /* Puntajes */
@@ -351,14 +433,56 @@ body {
     font-size:.78rem;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.5);cursor:pointer;}
 }
 
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE (mobile compacto, pensado para que se juegue sin scrollear) ── */
 @media (max-width:600px) {
-  .mesa-central { flex-direction:row; padding:14px; }
+  .mesa-central { flex-direction:row; align-items:flex-start; padding:10px; margin:6px; gap:10px; }
+  .zona-mazo, .zona-descarte { max-width:80px; }
   .carta { width:54px; height:78px; }
-  .carta-grande { width:70px; height:96px; }
-  .cv-top,.cv-bot { font-size:0.95rem; }
-  .cp { font-size:1.1rem; }
-  .ronda-info-bar { flex-direction:column; gap:6px; text-align:center; }
+  .carta-grande { width:68px; height:94px; }
+  .cv-top,.cv-bot { font-size:1.05rem; }
+  .cp { font-size:1.35rem; }
+  .ronda-info-bar { flex-direction:column; gap:4px; text-align:center; margin:6px; padding:8px 12px; }
+  .ronda-nombre { font-size:0.95rem; }
+  .estado-jugadores-inline { display:flex; }
+  .mi-mano-section { margin:6px; padding:8px 8px 4px; }
+  .mi-mano-section h3 { font-size:0.9rem; margin-bottom:6px; }
+  .mi-mano { gap:4px; margin-bottom:8px; }
+  .acciones-juego { gap:5px; margin-top:6px; }
+  .acciones-juego button { padding:9px 4px; font-size:0.78rem; }
+  .turno-bar { margin:4px 6px 0; }
+  .mi-turno-banner-grande { padding:8px 12px; flex-direction:row; gap:8px; justify-content:center; }
+  .turno-icono { font-size:1.4rem; }
+  .turno-texto { font-size:1.2rem; }
+  .turno-subtexto { display:none; }
+  .esperando-banner { padding:8px; font-size:0.85rem; }
+  .seccion-colapsable { margin:0 6px 6px; }
+  .mesa-header { padding:6px 10px; }
+  .header-logo { width:32px; height:32px; }
+  .header-user { font-size:0.85rem; }
+  .ronda-badge { font-size:0.68rem; }
+  .btn-logout { padding:5px 8px; font-size:0.75rem; }
+  .hint-tapa { display:none; } /* se oculta en mobile para ahorrar espacio */
+  .mazo-pile { width:76px; height:102px; }
+  .mazo-count { font-size:1.5rem; }
+  .descarte-slot { width:76px; height:102px; }
+  .carta-mini { width:34px; height:48px; }
+  .carta-mini .cv-top,.carta-mini .cv-bot { font-size:0.7rem; }
+  .carta-mini .cp { font-size:0.78rem; }
+
+  /* Botones de acción SIEMPRE visibles, pegados abajo de la pantalla */
+  .acciones-juego {
+    position: sticky; bottom: 0;
+    background: rgba(239,235,225,0.97);
+    backdrop-filter: blur(8px);
+    padding: 8px 8px 12px; margin: 10px -8px -4px;
+    border-top: 1px solid rgba(60,74,57,.15);
+    border-radius: 0; z-index: 200;
+    box-shadow: 0 -4px 16px rgba(60,74,57,.12);
+  }
+  body.casino-mode .acciones-juego {
+    background: rgba(5,46,22,.97) !important;
+    border-top-color: rgba(212,175,55,.3) !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -382,6 +506,7 @@ body.casino-mode .mesa-central,
 body.casino-mode .jug-estado,
 body.casino-mode .log-eventos,
 body.casino-mode .jugadas-mesa,
+body.casino-mode .seccion-colapsable,
 body.casino-mode .sopar-panel {
   background:rgba(5,46,22,.6) !important;
   border-color:rgba(212,175,55,.3) !important;
@@ -392,6 +517,7 @@ body.casino-mode .ronda-nombre,
 body.casino-mode .wapp-n,
 body.casino-mode .log-hora,
 body.casino-mode .jugadas-mesa h3,
+body.casino-mode .seccion-colapsable summary,
 body.casino-mode .bajada-nombre,
 body.casino-mode .monedas-tag,
 body.casino-mode .pts-valor,
@@ -422,7 +548,8 @@ body.casino-mode .btn-ordenar.activo {
 }
 body.casino-mode .btn-ordenar { background:rgba(251,191,36,.15) !important; color:#fbbf24 !important; }
 body.casino-mode .btn-tapa { background:linear-gradient(135deg,#ef4444,#b91c1c) !important; }
-body.casino-mode .mi-turno-banner {
+body.casino-mode .mi-turno-banner,
+body.casino-mode .mi-turno-banner-grande {
   background:linear-gradient(135deg,#fbbf24,#d97706) !important;
   color:#052e16 !important;
 }
@@ -436,6 +563,17 @@ body.casino-mode .carta-joker { background:linear-gradient(135deg,#7c2d12,#991b1
 body.casino-mode .jug-activo { border-color:#fbbf24 !important; background:rgba(251,191,36,.2) !important; }
 body.casino-mode .jug-listo { border-color:#ef4444 !important; background:rgba(239,68,68,.15) !important; }
 body.casino-mode .tapó-tag { background:#ef4444 !important; }
+body.casino-mode .turno-tag-badge {
+  background:linear-gradient(135deg,#fbbf24,#f59e0b) !important;
+  color:#052e16 !important;
+}
+body.casino-mode .turno-apurado,
+body.casino-mode .banner-apuro {
+  background:linear-gradient(135deg,#ef4444,#b91c1c) !important;
+  color:#fff !important;
+}
+body.casino-mode .jug-apressado { border-color:#ef4444 !important; background:rgba(239,68,68,.18) !important; }
+body.casino-mode .btn-apurar { background:rgba(251,191,36,.15) !important; color:#fbbf24 !important; border-color:rgba(251,191,36,.4) !important; }
 body.casino-mode .log-item { color:#d1fae5 !important; }
 body.casino-mode .hint-tapa { color:rgba(254,243,199,.6) !important; }
 body.casino-mode .msg-box.error { background:rgba(239,68,68,.3) !important; border-color:#ef4444 !important; color:#fecaca !important; }
@@ -451,11 +589,11 @@ body.casino-mode .theme-toggle {
 }
 
 /* ── CARTAS SELECCIONADAS: resaltado fuerte ── */
-.carta-sel{
+.carta-sel {
   transform:translateY(-14px) scale(1.08) !important;
   box-shadow:0 0 0 4px #c9a24b, 0 14px 26px rgba(60,74,57,.55) !important;
   filter:brightness(1.06);
-  z-index:5;
+  z-index:10; background:#fffbe6 !important;
 }
 .carta-sel::after{
   content:'✔';
@@ -466,10 +604,38 @@ body.casino-mode .theme-toggle {
   display:flex; align-items:center; justify-content:center;
   box-shadow:0 2px 6px rgba(0,0,0,.35);
 }
+.carta-sel.carta-joker {
+  box-shadow:0 0 0 3px #ffd700, 0 14px 22px rgba(100,60,180,.45) !important;
+}
 body.casino-mode .carta-sel{
   box-shadow:0 0 0 4px #fbbf24, 0 14px 26px rgba(0,0,0,.7) !important;
 }
 body.casino-mode .carta-sel::after{ background:#fbbf24; color:#052e16; }
+
+/* ── BADGE DE TURNO EN HEADER (junto al nombre) ── */
+.header-turno-badge {
+  display:inline-block;
+  background:linear-gradient(135deg,#e9c87e,#d9a75f);
+  color:#4a3a17;
+  font-size:0.72rem;
+  font-weight:900;
+  padding:3px 10px;
+  border-radius:20px;
+  margin-left:8px;
+  letter-spacing:.5px;
+  vertical-align:middle;
+  animation:pulse-header-turno 1.5s infinite;
+  box-shadow:0 2px 8px rgba(201,162,75,.4);
+}
+@keyframes pulse-header-turno {
+  0%,100%{box-shadow:0 2px 8px rgba(201,162,75,.3);}
+  50%{box-shadow:0 2px 14px rgba(201,162,75,.7);}
+}
+body.casino-mode .header-turno-badge {
+  background:linear-gradient(135deg,#fbbf24,#d97706) !important;
+  color:#052e16 !important;
+}
+
 /* ═══════════ MODAL FIN DE RONDA ═══════════ */
 .modal-ronda {
   position:fixed; inset:0; background:rgba(30,40,28,.65);
@@ -551,149 +717,4 @@ body.casino-mode .carta-sel::after{ background:#fbbf24; color:#052e16; }
   text-align:center; color:#7d9a77; font-size:0.9rem;
   font-weight:600; padding:12px;
   background:rgba(123,171,132,.1); border-radius:10px;
-}
-
-/* ── CARTA SELECCIONADA (por si no estaba) ── */
-.carta-sel {
-  transform:translateY(-14px) scale(1.08) !important;
-  box-shadow:0 0 0 3px #c9a24b, 0 14px 22px rgba(60,74,57,.45) !important;
-  z-index:10; background:#fffbe6 !important;
-}
-.carta-sel.carta-joker {
-  box-shadow:0 0 0 3px #ffd700, 0 14px 22px rgba(100,60,180,.45) !important;
-}
-
-/* ── HOST: BOTONES DE CONTROL ── */
-/* ── HOST: BOTONES DE CONTROL ── */
-.btn-host-apuro, .btn-host-saltear {
-  background: none; border: none; cursor: pointer;
-  font-size: 1rem; padding: 2px 4px; margin-left: 4px;
-  opacity: 0.7; transition: opacity 0.2s;
-}
-.btn-host-apuro:hover, .btn-host-saltear:hover { opacity: 1; transform: scale(1.2); }
-
-/* Botón de expulsar: más grande, con texto, separado y con confirmación visual */
-.btn-host-expulsar {
-  background: rgba(211, 47, 47, 0.15);
-  border: 1px solid rgba(211, 47, 47, 0.4);
-  color: #c62828;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  margin-left: 12px;
-  border-radius: 6px;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.btn-host-expulsar:hover {
-  background: rgba(211, 47, 47, 0.3);
-  border-color: #c62828;
-  transform: scale(1.05);
-}
-body.casino-mode .btn-host-expulsar {
-  background: rgba(239, 68, 68, 0.2) !important;
-  border-color: rgba(239, 68, 68, 0.5) !important;
-  color: #ef4444 !important;
-}
-body.casino-mode .btn-host-expulsar:hover {
-  background: rgba(239, 68, 68, 0.4) !important;
-}
-.jug-expulsado { opacity: 0.5; text-decoration: line-through; background: rgba(211,47,47,.1) !important; }
-
-/* ── BANNER DE APURO ── */
-.jug-apressado { animation: shake 0.5s ease-in-out; border-color: #ff9800 !important; }
-.banner-apuro {
-  position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
-  background: #ff9800; color: white; padding: 4px 12px; border-radius: 20px;
-  font-size: 0.75rem; font-weight: 800; white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(255,152,0,.4); z-index: 10;
-  animation: pulse-apuro 1s infinite;
-}
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-@keyframes pulse-apuro {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,152,0,.7); }
-  50% { box-shadow: 0 0 0 8px rgba(255,152,0,0); }
-}
-.jug-estado { position: relative; } /* Para que el banner se posicione bien */
-
-
-/* ── BOTÓN DE APURAR (cualquier jugador) ── */
-.btn-apurar {
-  background: none; border: none; cursor: pointer;
-  font-size: 1.1rem; padding: 2px 6px; margin-left: 4px;
-  opacity: 0.6; transition: all 0.2s;
-}
-.btn-apurar:hover { 
-  opacity: 1; 
-  transform: scale(1.3); 
-  filter: drop-shadow(0 0 4px rgba(255,152,0,0.6));
-}
-
-/* ── BANNER DE APURO (cuando te apuran) ── */
-.jug-apressado { 
-  animation: shake 0.5s ease-in-out; 
-  border-color: #ff9800 !important; 
-  background: rgba(255,152,0,0.1) !important;
-}
-.banner-apuro {
-  position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: white; padding: 6px 14px; border-radius: 20px;
-  font-size: 0.8rem; font-weight: 800; white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(255,152,0,0.5); z-index: 10;
-  animation: pulse-apuro 1s infinite;
-}
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-@keyframes pulse-apuro {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,152,0,0.7); }
-  50% { box-shadow: 0 0 0 10px rgba(255,152,0,0); }
-}
-.jug-estado { position: relative; }
-
-/* ── BANNER GRANDE DE "ES TU TURNO" ── */
-.mi-turno-banner-grande {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000; padding: 20px; border-radius: 16px; text-align: center;
-  margin: 12px; box-shadow: 0 8px 24px rgba(255,215,0,0.4);
-  animation: pulse-turno 2s infinite;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.turno-icono { font-size: 2.5rem; animation: bounce 1s infinite; }
-.turno-texto { 
-  font-size: 1.8rem; font-weight: 900; letter-spacing: 1px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-.turno-subtexto { font-size: 1rem; font-weight: 600; opacity: 0.9; }
-
-@keyframes pulse-turno {
-  0%, 100% { 
-    box-shadow: 0 8px 24px rgba(255,215,0,0.4);
-    transform: scale(1);
-  }
-  50% { 
-    box-shadow: 0 12px 32px rgba(255,215,0,0.6);
-    transform: scale(1.02);
-  }
-}
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* Modo casino: ajustar colores del banner de turno */
-body.casino-mode .mi-turno-banner-grande {
-  background: linear-gradient(135deg, #fbbf24, #d97706);
-  color: #052e16;
-}
-body.casino-mode .btn-apurar:hover {
-  filter: drop-shadow(0 0 4px rgba(251,191,36,0.8));
 }
