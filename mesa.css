@@ -242,9 +242,9 @@ body {
   background:linear-gradient(135deg,#a58fd0,#8e6fc0);
   color:#fff8e6; border:2px solid #e9c87e;
 }
-.cv-top { font-size:1.2rem; font-weight:900; line-height:1; }
-.cp     { font-size:1.65rem; text-align:center; line-height:1; }
-.cv-bot { font-size:1.2rem; font-weight:900; line-height:1;
+.cv-top { font-size:1.35rem; font-weight:900; line-height:1; }
+.cp     { font-size:1.9rem; text-align:center; line-height:1; }
+.cv-bot { font-size:1.35rem; font-weight:900; line-height:1;
   transform:rotate(180deg); align-self:flex-end; }
 .carta-grande { width:80px; height:110px; }
 .carta-grande .cv-top { font-size:0.9rem; }
@@ -293,6 +293,19 @@ body {
   color:#4a3a17; font-size:0.7rem; font-weight:800;
   padding:2px 8px; border-radius:10px; margin-left:4px;
   white-space:nowrap;
+}
+
+/* Tags del formulario "Armar otra partida": distinguen si un jugador conserva el
+   mismo link de WhatsApp (no hace falta reenviarlo) o si es nuevo/renombrado
+   (hay que mandarle un link nuevo). */
+.tag-jugador { display:inline-block; }
+.tag-mismo-link {
+  background:rgba(123,171,132,.22); color:#4f7a56; border:1px solid rgba(123,171,132,.5);
+  font-size:0.68rem; font-weight:700; padding:2px 7px; border-radius:8px; white-space:nowrap;
+}
+.tag-nuevo-jugador {
+  background:rgba(201,162,75,.22); color:#a97e2f; border:1px solid rgba(201,162,75,.5);
+  font-size:0.68rem; font-weight:700; padding:2px 7px; border-radius:8px; white-space:nowrap;
 }
 
 /* Variante compacta: al lado del mazo, en columna, para no ocupar todo el ancho */
@@ -357,8 +370,13 @@ body {
 .bajada-grupo .carta-mini:first-child{margin-left:0;}
 .bajada-grupo + .bajada-grupo{margin-left:12px;}
 .carta-mini{width:40px;height:56px;padding:2px 3px;border-radius:6px;}
-.carta-mini .cv-top{font-size:.6rem;}
-.carta-mini .cp{font-size:.85rem;}
+
+
+.carta-mini .cv-top{font-size:.85rem;}
+.carta-mini .cp{font-size:1.1rem;}
+.carta-mini .cv-bot{font-size:.85rem;}
+
+
 .sopar-panel { margin:0 12px 12px; padding:12px; background:rgba(233,200,126,.25);
   border:1px solid #c9a24b; border-radius:12px; }
 .sopar-btn { display:block; width:100%; margin:4px 0; padding:9px; border:none; border-radius:8px;
@@ -439,8 +457,12 @@ body {
   .zona-mazo, .zona-descarte { max-width:80px; }
   .carta { width:54px; height:78px; }
   .carta-grande { width:68px; height:94px; }
-  .cv-top,.cv-bot { font-size:1.05rem; }
-  .cp { font-size:1.35rem; }
+
+
+  .cv-top,.cv-bot { font-size:1.15rem; }
+.cp { font-size:1.55rem; }
+
+
   .ronda-info-bar { flex-direction:column; gap:4px; text-align:center; margin:6px; padding:8px 12px; }
   .ronda-nombre { font-size:0.95rem; }
   .estado-jugadores-inline { display:flex; }
@@ -466,8 +488,10 @@ body {
   .mazo-count { font-size:1.5rem; }
   .descarte-slot { width:76px; height:102px; }
   .carta-mini { width:34px; height:48px; }
-  .carta-mini .cv-top,.carta-mini .cv-bot { font-size:0.7rem; }
-  .carta-mini .cp { font-size:0.78rem; }
+
+
+  .carta-mini .cv-top,.carta-mini .cv-bot { font-size:0.8rem; }
+.carta-mini .cp { font-size:0.95rem; }
 
   /* Botones de acción SIEMPRE visibles, pegados abajo de la pantalla */
   .acciones-juego {
@@ -645,8 +669,8 @@ body.casino-mode .header-turno-badge {
 }
 .modal-ronda-card {
   background:#fdfcf7; max-width:480px; width:100%;
-  max-height:88vh; overflow-y:auto; border-radius:20px;
-  padding:24px 20px; box-shadow:0 24px 64px rgba(0,0,0,.35);
+  max-height:90vh; overflow-y:auto; border-radius:20px;
+  padding:24px 20px 0 20px; box-shadow:0 24px 64px rgba(0,0,0,.35);
   display:flex; flex-direction:column; gap:14px;
 }
 .modal-ronda-titulo {
@@ -707,14 +731,83 @@ body.casino-mode .header-turno-badge {
 .btn-aceptar-ronda {
   background:linear-gradient(135deg,#7bab84,#4f7a56);
   color:white; border:none; padding:15px;
-  border-radius:12px; font-size:1.05rem; font-weight:800;
+  border-radius:12px 12px 20px 20px; font-size:1.05rem; font-weight:800;
   cursor:pointer; font-family:inherit; transition:all .2s;
   width:100%;
+  /* SIEMPRE visible sin scrollear, sea cual sea la orientación: la tarjeta que lo
+     contiene (.modal-ronda-card) es la que scrollea (overflow-y:auto arriba), y este
+     botón queda pegado (sticky) al borde inferior DE ESE scroll — nunca al de la
+     ventana — así que no depende de portrait/landscape ni de cuántos jugadores haya
+     en la tabla. El margin negativo lateral+inferior lo estira hasta los bordes reales
+     de la tarjeta (que no tiene padding abajo a propósito) y el padding propio evita
+     que quede pegado al borde de la pantalla. El fondo sólido tapa el contenido que
+     scrollea por detrás. */
+  position:sticky; bottom:0;
+  margin:0 -20px -0px -20px; padding:15px 20px;
+  box-shadow:0 -6px 14px rgba(0,0,0,.12);
 }
 .btn-aceptar-ronda:hover { transform:scale(1.02);
   box-shadow:0 4px 16px rgba(79,122,86,.4); }
 .esperando-txt {
   text-align:center; color:#7d9a77; font-size:0.9rem;
   font-weight:600; padding:12px;
-  background:rgba(123,171,132,.1); border-radius:10px;
+  background:#fdfcf7; border-radius:12px 12px 20px 20px;
+  border:1px solid rgba(123,171,132,.25);
+  position:sticky; bottom:0; margin:0 -20px -0px -20px; padding:15px 20px;
+  box-shadow:0 -6px 14px rgba(0,0,0,.08);
+}
+/* (el botón de "Armar otra partida"/"Listo" se resuelve con position:sticky más abajo,
+   dentro de la propia tarjeta con scroll — ver .btn-aceptar-ronda / .esperando-txt) */
+/* En portrait mobile: limitar alto y dejar scroll interno solo en la tabla */
+@media (max-width: 600px) and (orientation: portrait) {
+  .modal-ronda { padding: 8px !important; align-items: flex-start !important; }
+  .modal-ronda-card { padding: 16px 14px !important; gap: 10px !important; }
+  .modal-ronda-titulo { font-size: 1rem !important; padding: 10px !important; }
+  .modal-ganador { font-size: 1.1rem !important; }
+  .modal-ronda-tabla { max-height: 40vh; overflow-y: auto; }
+  .modal-fila { padding: 8px 10px !important; }
+  .modal-nombre { font-size: 0.85rem !important; }
+  .modal-pos { font-size: 1rem !important; }
+  .btn-aceptar-ronda {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    margin-top: 10px !important;
+    padding: 16px !important;
+    font-size: 1.1rem !important;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.15);
+  }
+  .esperando-txt { font-size: 0.82rem !important; padding: 10px !important; }
+}
+/* Nota: ya no hace falta una media query separada para landscape — el esquema de
+   arriba (tarjeta con scroll interno + botón sticky al fondo DE ESE scroll) funciona
+   igual sea cual sea la orientación o el alto disponible de la pantalla. */
+
+/* ═══ DRAG & DROP: feedback visual sobre grupos de la mesa ═══ */
+.bajada-grupo {
+  transition: box-shadow .15s, transform .15s;
+}
+.bajada-grupo.drop-hover {
+  box-shadow: 0 0 0 3px #c9a24b, 0 4px 12px rgba(201,162,75,.4);
+  transform: scale(1.04);
+}
+@keyframes shake-grupo {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.bajada-grupo.drop-invalid {
+  box-shadow: 0 0 0 3px #e57373;
+  animation: shake-grupo 0.4s ease;
+}
+
+/* ═══ INDICADOR DRAG DESDE MANO ═══ */
+#miMano .carta[data-mano-idx] {
+  touch-action: none;
+}
+.carta-arrastrando {
+  opacity: 0.7;
+  transform: scale(1.1) translateY(-10px) !important;
+  box-shadow: 0 12px 24px rgba(0,0,0,.4) !important;
+  z-index: 50 !important;
 }

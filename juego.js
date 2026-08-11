@@ -18,6 +18,34 @@ const db = getDatabase(app);
 const PALOS = ['♠','♥','♦','♣'];
 const VALORES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const ORDEN = {'A':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13};
+/* El As vale 1 (bajo, ej. A-2-3) O 14 (alto, ej. Q-K-A), a elección de la escalera que
+   se está formando — igual que en canasta/rummy real. NUNCA "da la vuelta" (K-A-2 no es
+   válido: el As alto siempre va DESPUÉS del K, nunca conecta con el 2). MAXV es el techo
+   del rango cuando el As se usa alto. valLabel() muestra 'A' tanto para el valor 1 como
+   para el 14; valorCoincide() reconoce que una carta As real matchea CUALQUIERA de los
+   dos, según cuál necesite la jugada en ese momento. */
+const MAXV = 14;
+function valLabel(val){return val>=14?'A':VALORES[val-1];}
+/* Texto del cartel de ganador: soporta 1 solo ganador o un empate entre varios. */
+function textoGanadores(gs){
+ const arr=Array.isArray(gs)?gs:(gs?[gs]:[]);
+ if(!arr.length)return '👑 — GANÓ LA PARTIDA (menor puntaje)';
+ if(arr.length===1)return `👑 ${arr[0]} GANÓ LA PARTIDA (menor puntaje)`;
+ return `👑 ¡EMPATE! ${arr.join(' Y ')} GANARON LA PARTIDA (menor puntaje)`;
+}
+function valorCoincide(c,val){return val===14?c.v==='A':ORDEN[c.v]===val;}
+/* Todas las combinaciones de valores a probar para un conjunto de cartas reales de una
+   escalera: normalmente sólo hay una (As=1 si hay As, o ninguna variante si no hay As),
+   pero si hay exactamente 1 As se prueban las dos interpretaciones (bajo y alto) porque
+   no se sabe de antemano cuál arma una escalera válida. Con 2+ ases (posible con 2 mazos)
+   no se prueban combinaciones — cada As vale 1 por defecto, como antes. */
+function valoresConAsAlto(re){
+ const base=re.map(c=>ORDEN[c.v]);
+ const idxAs=re.findIndex(c=>c.v==='A');
+ if(idxAs===-1||re.filter(c=>c.v==='A').length>1)return [base];
+ const alto=[...base];alto[idxAs]=14;
+ return [base,alto];
+}
 const ORDEN_PALO = {'♠':0,'♥':1,'♦':2,'♣':3};
 const RONDAS = [
   {nombre:'Ronda 1 · 1 Trica',tipo:'trica',cant:1,tam:3},
@@ -163,12 +191,13 @@ function grupoValido(cartas, r) {
     const p = re[0].p;
     if (!re.every(c => c.p === p)) return false;
 
-    const v = re.map(c => ORDEN[c.v]).sort((a, b) => a - b);
-    if (new Set(v).size !== v.length) return false;
-
     const numJokers = cartas.length - re.length;
-    for (let s = Math.max(1, v[v.length - 1] - r.tam + 1); s <= Math.min(13 - r.tam + 1, v[0]); s++) {
-      if (v.every(x => x >= s && x <= s + r.tam - 1) && jokersOkEnRango(s, r.tam, v, numJokers)) return true;
+    for(const vTry of valoresConAsAlto(re)){
+      const v = [...vTry].sort((a, b) => a - b);
+      if (new Set(v).size !== v.length) continue;
+      for (let s = Math.max(1, v[v.length - 1] - r.tam + 1); s <= Math.min(MAXV - r.tam + 1, v[0]); s++) {
+        if (v.every(x => x >= s && x <= s + r.tam - 1) && jokersOkEnRango(s, r.tam, v, numJokers)) return true;
+      }
     }
     return false;
   }
@@ -188,16 +217,27 @@ function particionarGrupos(cartas,r){
  if(grupos.length!==r.cant)return null;
  return grupos;}
 
-function asignarVals(cartas){const tam=cartas.length,re=cartas.filter(c=>!c.joker);const v=re.map(c=>ORDEN[c.v]).sort((a,b)=>a-b);
- const numJokers=cartas.length-re.length;let s=null;
- for(let st=Math.max(1,v[v.length-1]-tam+1);st<=Math.min(13-tam+1,v[0]);st++)
-  if(v.every(x=>x>=st&&x<=st+tam-1)&&jokersOkEnRango(st,tam,v,numJokers)){s=st;break;}
- const falt=[];for(let x=s;x<s+tam;x++)if(!v.includes(x))falt.push(x);let fi=0;
- /* Ordenado por valor ascendente: el array se guarda en el orden en que el jugador
-    seleccionó las cartas en su mano, que no tiene por qué coincidir con el orden de la
-    escalera. Sin este sort, una carta soplada después (que se inserta al principio o al
-    final del array) puede terminar en la posición visual equivocada. */
- return cartas.map(c=>c.joker?{...c,val:falt[fi++]}:{...c,val:ORDEN[c.v]}).sort((a,b)=>a.val-b.val);}
+function asignarVals(cartas){const tam=cartas.length,re=cartas.filter(c=>!c.joker);
+ const numJokers=cartas.length-re.length;
+ for(const vTry of valoresConAsAlto(re)){
+  const v=[...vTry].sort((a,b)=>a-b);
+  if(new Set(v).size!==v.length)continue;
+  let s=null;
+  for(let st=Math.max(1,v[v.length-1]-tam+1);st<=Math.min(MAXV-tam+1,v[0]);st++)
+   if(v.every(x=>x>=st&&x<=st+tam-1)&&jokersOkEnRango(st,tam,v,numJokers)){s=st;break;}
+  if(s==null)continue;
+  const falt=[];for(let x=s;x<s+tam;x++)if(!v.includes(x))falt.push(x);let fi=0;
+  /* Ordenado por valor ascendente: el array se guarda en el orden en que el jugador
+     seleccionó las cartas en su mano, que no tiene por qué coincidir con el orden de la
+     escalera. Sin este sort, una carta soplada después (que se inserta al principio o al
+     final del array) puede terminar en la posición visual equivocada. */
+  return cartas.map(c=>{
+   if(c.joker)return {...c,val:falt[fi++]};
+   return {...c,val:c.v==='A'?vTry[re.indexOf(c)]:ORDEN[c.v]};
+  }).sort((a,b)=>a.val-b.val);
+ }
+ return null; /* no debería pasar si grupoValido ya validó esta misma selección antes */
+}
 
 function calcPts(m){const t={'A':15,'J':11,'Q':12,'K':13};
  return m.reduce((s,c)=>{if(c.joker)return s+20;const n=parseInt(c.v);return s+(isNaN(n)?(t[c.v]||0):n);},0);}
@@ -243,19 +283,19 @@ function opcionesSopar(e){const opts=[],mano=e.manos?.[miNombre]||[];
      g.forEach((card,jIdx)=>{
       if(!card.joker)return;
       const X=card.val;
-      const hi=mano.findIndex(c=>!c.joker&&c.p===palo&&ORDEN[c.v]===X);
+      const hi=mano.findIndex(c=>!c.joker&&c.p===palo&&valorCoincide(c,X));
       if(hi===-1)return;
-      if(top+1<=13){
+      if(top+1<=MAXV){
        const cartaEnTop=g.find(c=>c.val===top);
        if(!cartaEnTop?.joker)
         opts.push({tipo:'escalera',jugador:n,gi,hi,jIdx,lado:'der',
-         desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} y correr el 🃏 al ${VALORES[top]}`});
+         desc:`🧹 ${n}: poner tu ${valLabel(X)}${palo} y correr el 🃏 al ${valLabel(top+1)}`});
       }
       if(s-1>=1){
        const cartaEnS=g.find(c=>c.val===s);
        if(!cartaEnS?.joker)
         opts.push({tipo:'escalera',jugador:n,gi,hi,jIdx,lado:'izq',
-         desc:`🧹 ${n}: poner tu ${VALORES[X-1]}${palo} y correr el 🃏 al ${VALORES[s-2]}`});
+         desc:`🧹 ${n}: poner tu ${valLabel(X)}${palo} y correr el 🃏 al ${valLabel(s-1)}`});
       }
       /* NOTA: a propósito NO se ofrece "partir la escalera en dos" — eso sacaría el
          joker de la escalera, y en las escaleras el joker nunca se puede sacar, sólo
@@ -264,11 +304,11 @@ function opcionesSopar(e){const opts=[],mano=e.manos?.[miNombre]||[];
     }
     /* 2) Sopar carta que estira la escalera (cualquier jugador, inclusive vos) */
     [s-1,top+1].forEach((v,side)=>{
-     if(v<1||v>13)return;
+     if(v<1||v>MAXV)return;
      const lado=side===0?'izq':'der',donde=side===0?'inicio':'final';
-     const hi=mano.findIndex(c=>!c.joker&&c.p===palo&&ORDEN[c.v]===v);
+     const hi=mano.findIndex(c=>!c.joker&&c.p===palo&&valorCoincide(c,v));
      if(hi!==-1)opts.push({tipo:'adjEsc',jugador:n,gi,hi,lado,val:v,
-      desc:`🧹 ${n}: sopar tu ${VALORES[v-1]}${palo} al ${donde} de su escalera`});
+      desc:`🧹 ${n}: sopar tu ${valLabel(v)}${palo} al ${donde} de su escalera`});
      const hj=mano.findIndex(c=>c.joker);
      if(hj!==-1){
       /* Estirar con un joker propio: no se ofrece si el extremo de ese lado ya es un
@@ -278,7 +318,7 @@ function opcionesSopar(e){const opts=[],mano=e.manos?.[miNombre]||[];
       const jokersActuales=g.filter(c=>c.joker).length;
       const okNuevo=!bordeEsJoker&&(jokersActuales+1)<=maxJokersEscalera(g.length+1);
       if(okNuevo)opts.push({tipo:'adjEsc',jugador:n,gi,hi:hj,lado,val:v,
-       desc:`🧹 ${n}: sopar tu 🃏 al ${donde} de su escalera (vale ${VALORES[v-1]})`});
+       desc:`🧹 ${n}: sopar tu 🃏 al ${donde} de su escalera (vale ${valLabel(v)})`});
      }
     });
    }else{
@@ -480,15 +520,18 @@ const estHtml=e.jugadores.map(n=>{
   let hb='';
   e.jugadores.forEach(n=>{const gs=e.bajadas?.[n]||[];if(!gs.length)return;
    hb+=`<div class="bajada-fila"><span class="bajada-nombre">${n===miNombre?'👤 ':''}${n}</span>`;
-   gs.forEach(g=>{
+   gs.forEach((g,gi)=>{
     const esEsc=!esGrupoValor(g);
     const paloEsc=esEsc?(g.find(c=>!c.joker)?.p||''):'';
     const valorGrupo=!esEsc?(g.find(c=>!c.joker)?.v||''):'';
-    hb+=`<div class="bajada-grupo">`+g.map(c=>{
+    /* data-jugador/data-gi identifican esta jugada para el drag&drop de sopar (ver
+       pointermove/pointerup más abajo): arrastrando una carta de tu mano hasta acá
+       intenta sopar automáticamente, sin pasar por el panel de botones. */
+    hb+=`<div class="bajada-grupo" data-jugador="${n}" data-gi="${gi}">`+g.map(c=>{
      /* Indicativo de qué carta representa el joker: en una escalera es su valor+palo
         (ej. 10♠), en una trica/cuarta es el número del grupo. Sin esto no había forma de
         saber, mirando la mesa, qué posición ocupaba cada joker. */
-     const repr=c.joker?(esEsc?`${VALORES[c.val-1]}${paloEsc}`:valorGrupo):'';
+     const repr=c.joker?(esEsc?`${valLabel(c.val)}${paloEsc}`:valorGrupo):'';
      return `<div class="carta carta-mini ${c.joker?'carta-joker':c.p==='♥'||c.p==='♦'?'carta-roja':'carta-negra'}">
       <div class="cv-top">${c.v}</div><div class="cp">${c.p}</div>
       ${c.joker?`<div class="cv-bot" style="font-size:.6em;opacity:.85;">${repr}</div>`:''}
@@ -514,7 +557,30 @@ const estHtml=e.jugadores.map(n=>{
      exactamente 1 carta en la mano. NO hace falta que además la hayas "seleccionado" a
      mano — es la única carta posible, obligar a tocarla antes producía un botón que
      parecía no responder (deshabilitado en silencio, sin error). */
-  const btp=$('btnTapa');if(btp)btp.disabled=!mio||!ok||mano.length!==1||e.robos===0;
+    const btp=$('btnTapa');if(btp)btp.disabled=!mio||!ok||mano.length!==1||e.robos===0;
+  /* Botón "Deshacer bajada" — aparece SOLO si el jugador bajó algo en este turno
+     y todavía no tiró carta. Se crea dinámicamente la primera vez que se necesita
+     para no tocar los HTML. */
+    const pilaMia=e.pilaDeshacer?.[miNombre]||[];
+  const puedeDeshacer=mio&&pilaMia.length>0;
+  let btnD=$('btnDeshacer');
+  if(puedeDeshacer){
+   if(!btnD){
+    btnD=document.createElement('button');
+    btnD.id='btnDeshacer';
+    btnD.className='btn-tirar';
+    btnD.style.background='rgba(180,110,70,.9)';
+    btnD.style.marginTop='6px';
+    btnD.onclick=window.deshacerUltima;
+    const cont=$('btnTirar')?.parentElement;
+    if(cont)cont.insertBefore(btnD,$('btnTirar'));
+   }
+   btnD.style.display='block';
+      btnD.textContent=`↩ Deshacer última jugada${pilaMia.length>1?` (${pilaMia.length})`:''}`;
+   btnD.disabled=false;
+  }else if(btnD){
+   btnD.style.display='none';
+  }
   const sp=$('soparPanel');if(sp)sp.style.display='none';
   /* Modal fin de ronda (no confundir con fin de PARTIDA, que ahora corta arriba) */
   renderModalRonda(e);
@@ -534,9 +600,8 @@ function renderModalRonda(e){
    const total=e.jugadores.length;
    let html=`<div class="modal-ronda-card">`;
    if(r.fin){
-    const g=r.ganador;
     html+=`<div class="modal-ronda-titulo fin">🏆 FIN DEL JUEGO 🏆</div>
-     <div class="modal-ganador">👑 ${g} GANÓ LA PARTIDA (menor puntaje)</div>`;
+     <div class="modal-ganador">${textoGanadores(r.ganadores)}</div>`;
    }else{
     html+=`<div class="modal-ronda-titulo">🟢 ${r.tapador} TAPÓ con ${r.cartaTapa}</div>
      <div class="modal-ronda-sub">Siguiente: <strong>${r.siguiente}</strong> · Empieza: <strong>${r.empiezaProx}</strong></div>`;
@@ -601,7 +666,7 @@ function renderFinDePartida(e){
  modal.style.display='flex';
  let html=`<div class="modal-ronda-card">
   <div class="modal-ronda-titulo fin">🏆 FIN DEL JUEGO 🏆</div>
-  <div class="modal-ganador">👑 ${r.ganador||'—'} GANÓ LA PARTIDA (menor puntaje)</div>
+  <div class="modal-ganador">${textoGanadores(r.ganadores)}</div>
   <div class="modal-ronda-tabla">`;
  [...e.jugadores].sort((a,b)=>(puntajes[a]||0)-(puntajes[b]||0)).forEach((n,i)=>{
   const medallas=['🥇','🥈','🥉'];
@@ -644,6 +709,32 @@ document.addEventListener('pointermove',ev=>{
   if(!drag.moved&&(Math.abs(dx)>8||Math.abs(dy)>8))drag.moved=true;
   if(!drag.moved)return;
   ev.preventDefault();
+  /* ── ¿El puntero está sobre una jugada de la mesa (bajada-grupo)? Si es así, esto
+     es un intento de SOPAR por drag&drop, no un reacomodo de la mano: no hay que
+     moverle el índice a la carta dentro de #miMano mientras esté "de visita" arriba
+     de la mesa (si no, al soltar lejos de cualquier grupo quedaría reordenada en un
+     lugar que el jugador no eligió). Se resalta en dorado (drop-hover) si esa carta
+     realmente sopla ahí, o en rojo con sacudida (drop-invalid) si no — para que el
+     jugador sepa ANTES de soltar si la jugada es válida, sin tener que adivinar.
+     Las clases sólo se tocan cuando CAMBIA el grupo bajo el puntero (no en cada pixel
+     que te movés dentro del mismo grupo), para no recalcular ni parpadear de más. */
+  const elGrupo=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('.bajada-grupo');
+  if(elGrupo!==drag._lastGrupoEl){
+   if(drag._lastGrupoEl)drag._lastGrupoEl.classList.remove('drop-hover','drop-invalid');
+   drag._lastGrupoEl=elGrupo||null;
+   if(elGrupo){
+    const jugador=elGrupo.dataset.jugador,gi=+elGrupo.dataset.gi;
+    const hayMatch=puedeSopar(estadoLocal,miNombre)&&
+     opcionesSopar(estadoLocal).some(o=>o.jugador===jugador&&o.gi===gi&&o.hi===drag.start);
+    elGrupo.classList.add(hayMatch?'drop-hover':'drop-invalid');
+   }
+  }
+  if(elGrupo){
+   drag.overGrupo={jugador:elGrupo.dataset.jugador,gi:+elGrupo.dataset.gi};
+   return; /* no tocar el reacomodo de la mano mientras estás sobre la mesa */
+  }
+  drag._lastGrupoEl=null;
+  drag.overGrupo=null;
   const els=[...document.querySelectorAll('#miMano .carta')];
   let over=drag.over;
   if(els.length){
@@ -670,6 +761,16 @@ document.addEventListener('pointermove',ev=>{
 
 document.addEventListener('pointerup',async()=>{
   if(!drag)return;const d=drag;drag=null;
+  document.querySelectorAll('.bajada-grupo.drop-hover,.bajada-grupo.drop-invalid')
+   .forEach(el=>el.classList.remove('drop-hover','drop-invalid'));
+  if(d.moved&&d.overGrupo){
+   /* ── Soltaste la carta sobre una jugada de la mesa: intentar SOPAR ahí mismo,
+      sin pasar por el panel de botones. d.start es el índice ORIGINAL en la mano
+      (nunca se tocó, porque el reacomodo se desactivó apenas entraste a la mesa). ── */
+   await intentarSoparPorDrop(d.overGrupo.jugador,d.overGrupo.gi,d.start);
+   renderMesa(estadoLocal);
+   return;
+  }
   if(d.moved&&d.from!==d.start){
     const nuevo=d.arr;
     await runTransaction(ref(db,`partidas/${gameId}`),s=>{
@@ -681,7 +782,41 @@ document.addEventListener('pointerup',async()=>{
     selSet.has(d.start)?selSet.delete(d.start):selSet.add(d.start);
   }
   renderMesa(estadoLocal);});
-document.addEventListener('pointercancel',()=>{drag=null;renderMesa(estadoLocal);});
+document.addEventListener('pointercancel',()=>{drag=null;
+ document.querySelectorAll('.bajada-grupo.drop-hover,.bajada-grupo.drop-invalid')
+  .forEach(el=>el.classList.remove('drop-hover','drop-invalid'));
+ renderMesa(estadoLocal);});
+
+/* Intenta soplar arrastrando: busca, entre TODAS las opciones de sopar válidas ahora
+   mismo, las que coincidan con la carta soltada (hi) y la jugada exacta donde se soltó
+   (jugador+gi). Si hay una sola coincidencia, la ejecuta directo. Si hay más de una
+   (ej. un joker en el medio de una escalera con lugar para crecer de los DOS lados: no
+   se puede adivinar cuál de los dos querés), abre el panel de sopar ya filtrado a esas
+   opciones para que elijas con un toque. Si no hay ninguna, avisa que esa carta no sopla
+   ahí — sin romper nada. */
+async function intentarSoparPorDrop(jugador,gi,hi){
+ if(!estadoLocal)return;
+ if(!puedeSopar(estadoLocal,miNombre)){
+  log('❌ Recién podés sopar desde tu siguiente turno después de bajar la jugada.');
+  return;
+ }
+ const todas=opcionesSopar(estadoLocal);
+ const match=todas.filter(o=>o.jugador===jugador&&o.gi===gi&&o.hi===hi);
+ if(!match.length){
+  log('❌ Esa carta no sopla ahí.');
+  return;
+ }
+ if(match.length===1){
+  window._soparOpts=match;
+  await window.ejecutarSopar(0);
+  return;
+ }
+ /* Ambiguo (ej. crecer a izquierda o derecha): mostrar el panel con sólo estas opciones */
+ window._soparOpts=match;
+ htm('soparOpts',match.map((o,i)=>`<button class="sopar-btn" onclick="ejecutarSopar(${i})">${o.desc}</button>`).join(''));
+ const sp=$('soparPanel');if(sp)sp.style.display='block';
+ log('🧹 Esa carta tiene más de una jugada posible ahí — elegí una opción abajo.');
+}
 
 window.ordenarMano=async function(){if(!estadoLocal)return;
  await runTransaction(ref(db,`partidas/${gameId}`),s=>{if(!s?.manos?.[miNombre])return;
@@ -770,7 +905,10 @@ window.tirarCarta=async function(){if(!estadoLocal||selSet.size!==1)return;const
  const compraH={...(e.compraHabilitada||{})},nxt=e.jugadores[next];
  compraH[nxt]=(e.bajadas?.[nxt]||[]).length>=RONDAS[e.ronda].cant;
  selSet.clear();
- await update(ref(db,`partidas/${gameId}`),{manos,mesa,pozo,turnoIdx:next,robos:0,compraHabilitada:compraH,[`apressado/${miNombre}`]:null});
+ /* Al tirar carta se termina la ventana para deshacer: limpiamos bajadasRecientes
+    del jugador que tiró (y de todos por seguridad, por si quedó algo colgado). */
+  /* Al tirar carta se cierra la ventana para deshacer: se vacía la pila de todos */
+ await update(ref(db,`partidas/${gameId}`),{manos,mesa,pozo,turnoIdx:next,robos:0,compraHabilitada:compraH,pilaDeshacer:{},[`apressado/${miNombre}`]:null});
  log(`↩ ${miNombre} tiró ${c.v}${c.p}`);};
 
 window.bajarJugada=async function(){if(!estadoLocal||selSet.size===0)return;const e=estadoLocal;
@@ -818,11 +956,23 @@ window.bajarJugada=async function(){if(!estadoLocal||selSet.size===0)return;cons
  manos[miNombre]=mano.filter(c=>!ids.has(c.id));
  const bajadas=JSON.parse(JSON.stringify(e.bajadas||{}));
  bajadas[miNombre]=[...(bajadas[miNombre]||[]),...grupos];
- const compraH={...(e.compraHabilitada||{}),[miNombre]:false};
+ /* Solo se "apaga" compraHabilitada cuando esta bajada ES la apertura (yaAbrio era
+    false). Si ya estaba habilitado (turno siguiente a la apertura), tiene que seguir
+    habilitado para poder bajar todas las jugadas sueltas que quiera en este mismo
+    turno, hasta que tire la carta a la mesa. */
+  const compraH=yaAbrio?{...(e.compraHabilitada||{})}:{...(e.compraHabilitada||{}),[miNombre]:false};
+ /* Snapshot previo para poder deshacer (bajadas Y sopas) dentro del turno */
+ const pilaDeshacer=JSON.parse(JSON.stringify(e.pilaDeshacer||{}));
+ const pilaMia=[...(pilaDeshacer[miNombre]||[])];
+ pilaMia.push({
+  bajadas:JSON.parse(JSON.stringify(e.bajadas||{})),
+  mano:JSON.parse(JSON.stringify(mano)),
+  compraH:JSON.parse(JSON.stringify(e.compraHabilitada||{}))
+ });
+ pilaDeshacer[miNombre]=pilaMia;
  selSet.clear();
- await update(ref(db,`partidas/${gameId}`),{manos,bajadas,compraHabilitada:compraH});
+ await update(ref(db,`partidas/${gameId}`),{manos,bajadas,compraHabilitada:compraH,pilaDeshacer});
  log(`📥 ${miNombre} bajó la jugada completa`);};
-
 window.abrirSopar=function(){if(!estadoLocal)return;
  if(estadoLocal.jugadores?.[estadoLocal.turnoIdx]!==miNombre)
   return alert('❌ Sólo podés sopar en tu propio turno.');
@@ -849,6 +999,13 @@ window.ejecutarSopar=async function(i){
     const mm=s.manos[miNombre],mia=mm?.[o.hi];
     if(!mia)return;
 
+        /* Foto del estado ANTES de sopar (para poder deshacerlo en el turno) */
+    const prev={
+      bajadas:JSON.parse(JSON.stringify(s.bajadas||{})),
+      mano:JSON.parse(JSON.stringify(s.manos[miNombre]||[])),
+      compraH:JSON.parse(JSON.stringify(s.compraHabilitada||{}))
+    };
+
     if(o.tipo==='grupo'){
       /* Sacar el joker de una trica/cuarta/quina (propia o ajena) poniendo tu carta
          real del mismo número en su lugar. El joker pasa a TU mano para que lo puedas
@@ -866,7 +1023,7 @@ window.ejecutarSopar=async function(i){
       if(jk==null||!jk.joker)return;
       const vals=g.map(c=>c.val),s0=Math.min(...vals),top0=Math.max(...vals);
       const nv=o.lado==='der'?top0+1:s0-1;
-      if(nv<1||nv>13)return;
+      if(nv<1||nv>MAXV)return;
       /* Re-validar server-side que el nuevo extremo no quede con dos jokers pegados
          (por si el estado cambió entre que se abrió el panel y se tocó el botón). */
       const cartaEnExtremo=o.lado==='der'?g.find(c=>c.val===top0):g.find(c=>c.val===s0);
@@ -961,8 +1118,13 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
       siguiente en orden de turno". */
    const idxTapador=s.jugadores.indexOf(miNombre);
    const ns=fin?s.starterIdx:(idxTapador>=0?idxTapador:s.starterIdx);
-   /* Gana la PARTIDA quien saca MENOR puntaje acumulado (reduce se queda con el menor). */
-   const ganador=fin?s.jugadores.reduce((a,b)=>puntajes[a]<puntajes[b]?a:b):null;
+   /* Gana la PARTIDA quien saca MENOR puntaje acumulado. Si dos o más jugadores empatan
+      en el puntaje más bajo, TODOS ganan — antes "reduce" se quedaba con uno solo de
+      forma arbitraria y no había manera de detectar ni mostrar un empate. */
+   const ganadores=fin?(()=>{
+    const minPts=Math.min(...s.jugadores.map(n=>puntajes[n]));
+    return s.jugadores.filter(n=>puntajes[n]===minPts);
+   })():null;
    s.manos=manos;
    s.puntajes=puntajes;
    s.fase='esperando_aceptacion';
@@ -974,7 +1136,7 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
     cartasRestantes:manos,
     rondaNum:s.ronda,
     fin,
-    ganador,
+    ganadores,
     siguiente:fin?null:RONDAS[nr].nombre,
     empiezaProx:fin?null:miNombre,
     aceptaron:{}
@@ -1008,6 +1170,40 @@ window.tapar=async function(){if(!estadoLocal)return;const e=estadoLocal;
   alert('❌ Hubo un error al cerrar la ronda. Mirá el log de eventos para más info.');
  }};
 
+/* ═══════════ DESHACER BAJADAS DEL TURNO ACTUAL ═══════════
+   Permite al jugador arrepentirse y levantar de la mesa SOLO las jugadas que bajó
+   en su turno actual (antes de tirar la carta). Si deshace la apertura, también se
+   revierte compraHabilitada. Después de tirar carta, la ventana se cierra. */
+/* ═══════════ DESHACER ÚLTIMA JUGADA DEL TURNO (bajada o sopa) ═══════════
+   Revierte la última acción deshicible del turno actual (bajada o sopa),
+   restaurando bajadas, mano y compraHabilitada desde el snapshot apilado.
+   Se puede usar varias veces seguidas (LIFO). La pila se limpia al tirar carta. */
+window.deshacerUltima=async function(){
+ if(!estadoLocal)return;
+ const e=estadoLocal;
+ if(e.jugadores[e.turnoIdx]!==miNombre)return log('No es tu turno');
+ const pila=e.pilaDeshacer?.[miNombre]||[];
+ if(!pila.length)return alert('No hay jugadas de este turno para deshacer.');
+ const res=await runTransaction(ref(db,`partidas/${gameId}`),s=>{
+  if(!s)return;
+  if(s.jugadores[s.turnoIdx]!==miNombre)return;
+  const p=s.pilaDeshacer?.[miNombre]||[];
+  if(!p.length)return;
+  const prev=p[p.length-1];
+  s.bajadas=prev.bajadas;
+  s.manos[miNombre]=prev.mano;
+  s.compraHabilitada=prev.compraH;
+  s.pilaDeshacer={...(s.pilaDeshacer||{}),[miNombre]:p.slice(0,-1)};
+  return s;
+ });
+ if(res.committed){
+  log(`↩ ${miNombre} deshizo su última jugada del turno`);
+  selSet.clear();
+ }else{
+  log('❌ No se pudo deshacer (puede que tu turno ya haya pasado).');
+ }
+};
+
 /* ═══════════ ACEPTAR RONDA (transacción atómica: evita choques entre jugadores y estados corruptos previos) ═══════════ */
 window.aceptarRonda=async function(){if(!estadoLocal)return;
  try{
@@ -1028,7 +1224,7 @@ window.aceptarRonda=async function(){if(!estadoLocal)return;
    if(r.fin){
     s.fase='partida_terminada';
     s.puntajes=r.puntajesAcum||s.puntajes;
-    s.resultadoFinal={ganador:r.ganador,puntajes:r.puntajesAcum||s.puntajes};
+    s.resultadoFinal={ganadores:r.ganadores,puntajes:r.puntajesAcum||s.puntajes};
     s.resumenRonda=null;
     return s;
    }
@@ -1118,13 +1314,18 @@ window.nuevaPartida=function(){
     WhatsApp que ya se mandaron sigan sirviendo. */
  if(!estadoLocal||miNombre!==estadoLocal.host)return;
  reusarGameId=true;
+ /* Guardamos el roster de la partida que acaba de terminar ANTES de tocar nada del
+    formulario — es lo que se usa para precargar nombres y decidir qué jugador
+    conserva el mismo link (mismo gameId + mismo nombre = mismo link exacto) y cuál
+    es nuevo (hay que mandarle el link SIN precargar). */
+ const prevJugadores=[...(estadoLocal.jugadores||[])];
  const modal=$('modalFinPartida');if(modal)modal.style.display='none';
  const pm=$('panelMesa');if(pm)pm.style.display='none';
  const ps=$('panelSetup');if(ps)ps.style.display='block';
- /* Reseteamos el formulario de setup para que pida jugadores de nuevo */
- const nj=$('numJugadores');if(nj)nj.value='';
- const ij=$('inputJugadores');if(ij)ij.innerHTML='';
+ const nj=$('numJugadores');
+ if(nj)nj.value=String(Math.min(8,Math.max(2,prevJugadores.length||2)));
  const btn=$('btnIniciar');if(btn){btn.disabled=false;btn.textContent='🃏 Repartir cartas';}
+ crearInputs(prevJugadores);
 };
 
 window.salirPartida=function(){
@@ -1132,12 +1333,40 @@ window.salirPartida=function(){
  renderMesa(estadoLocal);
 };
 
-window.crearInputs=function(){const num=parseInt($('numJugadores')?.value)||0;
+window.crearInputs=function(prev){const num=parseInt($('numJugadores')?.value)||0;
  const c=$('inputJugadores');if(!c)return;
+ /* Si viene una lista de jugadores de la partida anterior (desde "🎲 Armar otra
+    partida"), la recordamos en window._prevJugadores para poder precargar los
+    nombres y re-pintar los tags aunque el host cambie el número de jugadores
+    después (crearInputs se vuelve a llamar sin argumento desde el <select>). En una
+    partida totalmente nueva no llega nada acá, así que no se precarga nada. */
+ if(Array.isArray(prev))window._prevJugadores=prev;
+ const previos=window._prevJugadores||null;
  c.innerHTML=`<div class="input-row"><span class="yo-tag">👤 ${miNombre} (vos — host)</span></div>`;
- for(let i=1;i<num;i++)c.innerHTML+=`<div class="input-row"><label>Jugador ${i+1}:</label>
-  <input type="text" id="jug${i}" placeholder="Nombre" oninput="this.value=this.value.toUpperCase();actualizarStarter()"/></div>`;
+ for(let i=1;i<num;i++){
+  const nombrePrevio=(previos?.[i]&&previos[i]!==miNombre)?previos[i]:'';
+  c.innerHTML+=`<div class="input-row"><label>Jugador ${i+1}: <span id="tagJug${i}" class="tag-jugador"></span></label>
+   <input type="text" id="jug${i}" placeholder="Nombre" value="${nombrePrevio}" data-previo="${nombrePrevio}"
+    oninput="this.value=this.value.toUpperCase();actualizarStarter();actualizarTagJugador(${i})"/></div>`;
+ }
+ for(let i=1;i<num;i++)actualizarTagJugador(i);
  actualizarStarter();};
+
+/* Compara el nombre actual del input contra el de la partida anterior (guardado en
+   data-previo) para mostrar si ese jugador va a conservar el MISMO link de WhatsApp
+   (no hace falta reenviárselo) o si es un jugador nuevo/renombrado (hay que
+   mandarle el link SÍ o SÍ, porque el suyo va a ser distinto). Se recalcula en cada
+   tecla, así que si el host borra un nombre precargado y escribe otro, el tag
+   cambia solo de 🔁 a 🆕 sin que tenga que pensarlo. */
+window.actualizarTagJugador=function(i){
+ const inp=$(`jug${i}`),tag=$(`tagJug${i}`);
+ if(!inp||!tag)return;
+ const previo=inp.dataset.previo||'',val=inp.value.trim();
+ if(!val){tag.innerHTML='';return;}
+ tag.innerHTML=(previo&&val===previo)
+  ?`<span class="tag-mismo-link" title="Mismo link de WhatsApp que la partida anterior, no hace falta reenviarlo">🔁 mismo link</span>`
+  :`<span class="tag-nuevo-jugador" title="Link nuevo: hay que mandárselo">🆕 nuevo link</span>`;
+};
 
 window.actualizarStarter=function(){const num=parseInt($('numJugadores')?.value)||0;
  const n=[miNombre];for(let i=1;i<num;i++){const v=$(`jug${i}`)?.value.trim();n.push(v||`Jugador ${i+1}`);}
