@@ -979,7 +979,7 @@ window.abrirSopar=function(){if(!estadoLocal)return;
  if(!estadoLocal.compraHabilitada?.[miNombre])
   return alert('❌ Recién podés sopar desde tu siguiente turno después de bajar la jugada.');
  const opts=opcionesSopar(estadoLocal);
- if(!opts.length)return alert('No hay jokers para sopar con tus cartas.');
+ if(!opts.length)return alert('No hay cartas en tu baraja para sopar en la mesa.');
  window._soparOpts=opts;
  htm('soparOpts',opts.map((o,i)=>`<button class="sopar-btn" onclick="ejecutarSopar(${i})">${o.desc}</button>`).join(''));
  const sp=$('soparPanel');if(sp)sp.style.display='block';};
